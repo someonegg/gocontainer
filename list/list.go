@@ -4,76 +4,49 @@
 
 // Package list implements a doubly linked list.
 // The list's method is similar to standard "container/list".
-//
-// The difference with standard is:
-//
-// List management structure(Element) is expect to be
-// embedded into user object, not separately alloc.
+// The main difference is:
+//   list management structure needs to be embedded into your element.
 package list
 
-// Objects implementing the Element interface can be
-// inserted into a list.
+// Element interface is used to traverse the list.
 type Element interface {
-	// Wrapped method, for users.
+	// Next returns the next list element or nil.
 	Next() Element
+	// Prev returns the previous list element or nil.
 	Prev() Element
 
 	// Raw method, for list package.
-	GetNext() Element
-	SetNext(e Element)
-	GetPrev() Element
-	SetPrev(e Element)
-	GetList() *List
-	SetList(list *List)
+	getNode() *Node
 }
 
-// DefElem implements the Element interface.
-type DefElem struct {
+// Node is the ONLY implementation of the Element interface, it
+// needs to be embedded into your element structure.
+type Node struct {
 	next Element
 	prev Element
 	list *List
 }
 
-func (d *DefElem) Next() Element {
+func (d *Node) Next() Element {
 	if p := d.next; d.list != nil && p != &d.list.root {
 		return p
 	}
 	return nil
 }
 
-func (d *DefElem) Prev() Element {
+func (d *Node) Prev() Element {
 	if p := d.prev; d.list != nil && p != &d.list.root {
 		return p
 	}
 	return nil
 }
 
-func (d *DefElem) GetNext() Element {
-	return d.next
-}
-
-func (d *DefElem) SetNext(e Element) {
-	d.next = e
-}
-
-func (d *DefElem) GetPrev() Element {
-	return d.prev
-}
-
-func (d *DefElem) SetPrev(e Element) {
-	d.prev = e
-}
-
-func (d *DefElem) GetList() *List {
-	return d.list
-}
-
-func (d *DefElem) SetList(list *List) {
-	d.list = list
+func (d *Node) getNode() *Node {
+	return d
 }
 
 type List struct {
-	root DefElem
+	root Node
 	len  int
 }
 
@@ -109,28 +82,36 @@ func (l *List) lazyInit() {
 }
 
 func (l *List) insert(e, at Element) Element {
-	n := at.GetNext()
-	at.SetNext(e)
-	e.SetPrev(at)
-	e.SetNext(n)
-	n.SetPrev(e)
-	e.SetList(l)
+	eN := e.getNode()
+	atN := at.getNode()
+	n := atN.next
+	nN := n.getNode()
+	atN.next = e
+	eN.prev = at
+	eN.next = n
+	nN.prev = e
+	eN.list = l
 	l.len++
 	return e
 }
 
 func (l *List) remove(e Element) Element {
-	e.GetPrev().SetNext(e.GetNext())
-	e.GetNext().SetPrev(e.GetPrev())
-	e.SetNext(nil)
-	e.SetPrev(nil)
-	e.SetList(nil)
+	eN := e.getNode()
+	n := eN.next
+	nN := n.getNode()
+	p := eN.prev
+	pN := p.getNode()
+	pN.next = n
+	nN.prev = p
+	eN.next = nil
+	eN.prev = nil
+	eN.list = nil
 	l.len--
 	return e
 }
 
 func (l *List) Remove(e Element) Element {
-	if e.GetList() == l {
+	if e.getNode().list == l {
 		l.remove(e)
 	}
 	return e
@@ -147,42 +128,42 @@ func (l *List) PushBack(e Element) Element {
 }
 
 func (l *List) InsertBefore(e Element, mark Element) Element {
-	if mark.GetList() != l {
+	if mark.getNode().list != l {
 		return nil
 	}
-	return l.insert(e, mark.GetPrev())
+	return l.insert(e, mark.getNode().prev)
 }
 
 func (l *List) InsertAfter(e Element, mark Element) Element {
-	if mark.GetList() != l {
+	if mark.getNode().list != l {
 		return nil
 	}
 	return l.insert(e, mark)
 }
 
 func (l *List) MoveToFront(e Element) {
-	if e.GetList() != l || l.root.next == e {
+	if e.getNode().list != l || l.root.next == e {
 		return
 	}
 	l.insert(l.remove(e), &l.root)
 }
 
 func (l *List) MoveToBack(e Element) {
-	if e.GetList() != l || l.root.prev == e {
+	if e.getNode().list != l || l.root.prev == e {
 		return
 	}
 	l.insert(l.remove(e), l.root.prev)
 }
 
 func (l *List) MoveBefore(e, mark Element) {
-	if e.GetList() != l || e == mark || mark.GetList() != l {
+	if e.getNode().list != l || e == mark || mark.getNode().list != l {
 		return
 	}
-	l.insert(l.remove(e), mark.GetPrev())
+	l.insert(l.remove(e), mark.getNode().prev)
 }
 
 func (l *List) MoveAfter(e, mark Element) {
-	if e.GetList() != l || e == mark || mark.GetList() != l {
+	if e.getNode().list != l || e == mark || mark.getNode().list != l {
 		return
 	}
 	l.insert(l.remove(e), mark)

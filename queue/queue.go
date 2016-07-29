@@ -3,26 +3,26 @@
 // license that can be found in the LICENSE file.
 
 // Package queue contains some queue implements.
-//
-// According to the design, the element push to queue can not be nil.
 package queue
 
 import (
-	"errors"
 	"github.com/someonegg/gocontainer/list"
 	"github.com/someonegg/goutility/chanutil"
 	"sync"
 )
 
-var ErrNilElement = errors.New("queue's element is nil")
-
 // Queue is a double-ended FIFO list.
+//
+// You can init the queue manually, see Init method.
 type Queue struct {
-	list list.List
+	list   list.List
+	locker sync.Locker
 }
 
-func (q *Queue) List() *list.List {
-	return &q.list
+// Init the queue manually, with a locker (can be nil).
+func (q *Queue) Init(l sync.Locker) {
+	q.list.Init()
+	q.locker = l
 }
 
 func (q *Queue) Len() int {
@@ -30,20 +30,20 @@ func (q *Queue) Len() int {
 }
 
 func (q *Queue) PushFront(e list.Element) {
-	if e == nil {
-		panic(ErrNilElement)
-	}
+	q.Lock()
+	defer q.Unlock()
 	q.list.PushFront(e)
 }
 
 func (q *Queue) PushBack(e list.Element) {
-	if e == nil {
-		panic(ErrNilElement)
-	}
+	q.Lock()
+	defer q.Unlock()
 	q.list.PushBack(e)
 }
 
 func (q *Queue) PopFront() list.Element {
+	q.Lock()
+	defer q.Unlock()
 	e := q.list.Front()
 	if e == nil {
 		return nil
@@ -52,6 +52,8 @@ func (q *Queue) PopFront() list.Element {
 }
 
 func (q *Queue) PopBack() list.Element {
+	q.Lock()
+	defer q.Unlock()
 	e := q.list.Back()
 	if e == nil {
 		return nil
@@ -59,113 +61,67 @@ func (q *Queue) PopBack() list.Element {
 	return q.list.Remove(e)
 }
 
-// SynQueue is a syn queue.
-type SynQueue struct {
-	inner Queue
-	lock  sync.Mutex
+func (q *Queue) Lock() {
+	if q.locker != nil {
+		q.locker.Lock()
+	}
 }
 
-func (q *SynQueue) Lock() {
-	q.lock.Lock()
+func (q *Queue) Unlock() {
+	if q.locker != nil {
+		q.locker.Unlock()
+	}
 }
 
-func (q *SynQueue) List() *list.List {
-	return q.inner.List()
+func (q *Queue) ObtainList() *list.List {
+	return &q.list
 }
 
-func (q *SynQueue) Unlock() {
-	q.lock.Unlock()
-}
-
-func (q *SynQueue) Len() int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-	return q.inner.Len()
-}
-
-func (q *SynQueue) PushFront(e list.Element) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-	q.inner.PushFront(e)
-}
-
-func (q *SynQueue) PushBack(e list.Element) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-	q.inner.PushBack(e)
-}
-
-func (q *SynQueue) PopFront() list.Element {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-	return q.inner.PopFront()
-}
-
-func (q *SynQueue) PopBack() list.Element {
-	q.lock.Lock()
-	defer q.lock.Unlock()
-	return q.inner.PopBack()
-}
-
-// EvtQueue is a queue with event(a read-only chan), the
+// EventQueue is a queue with event(a read-only chan), the
 // event will return data if the list is not empty.
 //
-// Users must call Init() before use.
-type EvtQueue struct {
-	inner SynQueue
+// You must init the queue manually, see Init method.
+type EventQueue struct {
+	Queue
 	event chanutil.Event
 }
 
-func (q *EvtQueue) Init() {
+// Init the queue manually, with a locker (can be nil).
+func (q *EventQueue) Init(l sync.Locker) {
+	q.Queue.Init(l)
 	q.event = chanutil.NewEvent()
 }
 
-func (q *EvtQueue) Lock() {
-	q.inner.Lock()
-}
-
-func (q *EvtQueue) List() *list.List {
-	return q.inner.List()
-}
-
-func (q *EvtQueue) Unlock() {
-	q.inner.Unlock()
-}
-
-func (q *EvtQueue) Len() int {
-	return q.inner.Len()
-}
-
-func (q *EvtQueue) PushFront(e list.Element) {
-	q.inner.PushFront(e)
+func (q *EventQueue) PushFront(e list.Element) {
+	q.Queue.PushFront(e)
 	q.SetEvent()
 }
 
-func (q *EvtQueue) PushBack(e list.Element) {
-	q.inner.PushBack(e)
+func (q *EventQueue) PushBack(e list.Element) {
+	q.Queue.PushBack(e)
 	q.SetEvent()
 }
 
-func (q *EvtQueue) PopFront() list.Element {
-	e := q.inner.PopFront()
-	if q.inner.Len() > 0 {
+func (q *EventQueue) PopFront() list.Element {
+	e := q.Queue.PopFront()
+	if q.Queue.Len() > 0 {
 		q.SetEvent()
 	}
 	return e
 }
 
-func (q *EvtQueue) PopBack() list.Element {
-	e := q.inner.PopBack()
-	if q.inner.Len() > 0 {
+func (q *EventQueue) PopBack() list.Element {
+	e := q.Queue.PopBack()
+	if q.Queue.Len() > 0 {
 		q.SetEvent()
 	}
 	return e
 }
 
-func (q *EvtQueue) Event() chanutil.EventR {
+func (q *EventQueue) Event() chanutil.EventR {
 	return q.event.R()
 }
 
-func (q *EvtQueue) SetEvent() {
+func (q *EventQueue) SetEvent() {
 	q.event.Set()
 }
