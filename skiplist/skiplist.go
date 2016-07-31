@@ -8,7 +8,7 @@
 //   there is a back pointer, so it's a doubly linked list.
 // List will be sorted by score:
 //   in ascending order.
-//   element has rank(0-based), also in ascending order.
+//   with rank(0-based), also in ascending order.
 //   "what is the score, how to compare" is defined by the user.
 package skiplist
 
@@ -133,8 +133,10 @@ func NewListEx(maxLevel int, randSource rand.Source, compare CompareFunc) *List 
 	return l
 }
 
+// Len returns the number of elements of list l. The complexity is O(1).
 func (l *List) Len() int { return l.len }
 
+// Front returns the first element of list l or nil.
 func (l *List) Front() Element {
 	if l.len == 0 {
 		return nil
@@ -142,6 +144,7 @@ func (l *List) Front() Element {
 	return l.root.lev[0].next
 }
 
+// Back returns the last element of list l or nil.
 func (l *List) Back() Element {
 	if l.len == 0 {
 		return nil
@@ -149,8 +152,9 @@ func (l *List) Back() Element {
 	return l.root.lev[0].prev
 }
 
-// return nil if not found.
-func (l *List) FindOfRank(rank int) Element {
+// Get the element at rank, return nil if rank is invalid.
+//   0 <= valid rank < list.Len()
+func (l *List) Get(rank int) Element {
 	if rank < 0 || rank >= l.len {
 		return nil
 	}
@@ -163,8 +167,10 @@ func (l *List) FindOfRank(rank int) Element {
 	return e
 }
 
-// return nil if not found.
-func (l *List) FindFirstOfScore(score Scorable) Element {
+// Find the first element equal to score, return nil if not found.
+// If there are multiple elements equal to score, you can use the
+// "Element" to traverse them.
+func (l *List) Find(score Scorable) Element {
 	if score == nil {
 		return nil
 	}
@@ -180,8 +186,7 @@ func (l *List) FindFirstOfScore(score Scorable) Element {
 	return e
 }
 
-// return current rank of the element.
-// if e is not in l, return -1.
+// Calculate current rank of the element, return -1 if not in the list.
 func (l *List) Rank(e Element) int {
 	eN := e.getNode()
 	if eN.list != l {
@@ -198,17 +203,12 @@ func (l *List) Rank(e Element) int {
 	return rank - 1 // 0-based
 }
 
-// return rank of the element when added.
-// if e is already in a list, return -1.
-func (l *List) Add(e Element) int {
-	nN := e.getNode()
-	if nN.list != nil {
-		return -1
-	}
-	return l.add(e)
+// Add an element to the list.
+func (l *List) Add(e Element) {
+	l.add(e)
 }
 
-func (l *List) add(e Element) int {
+func (l *List) add(e Element) {
 	path := l.newSearchPath()
 
 	ee, found := l.searchToScore(e, path)
@@ -263,12 +263,6 @@ func (l *List) add(e Element) int {
 
 	eN.list = l
 	l.len++
-
-	rank := 1 // add
-	for _, v := range path.levSpan {
-		rank += v
-	}
-	return rank - 1 // 0-based
 }
 
 func (l *List) randLevel() int {
@@ -281,6 +275,7 @@ func (l *List) randLevel() int {
 	return nlev
 }
 
+// Remove an element from the list.
 func (l *List) Remove(e Element) {
 	eN := e.getNode()
 	if eN.list != l {
@@ -372,7 +367,7 @@ func (l *List) searchPathOf(e Element) *searchPath {
 //   >0 goto next
 type poscompFunc func(ilev int, p, n Element, pN, nN *Node) int
 
-func (l *List) searchWithPoscomp(poscomp poscompFunc, path *searchPath) (Element, bool) {
+func (l *List) searchToPos(poscomp poscompFunc, path *searchPath) (Element, bool) {
 	found := false
 
 	p := Element(l.root)
@@ -428,7 +423,7 @@ func (l *List) searchToScore(score Scorable, path *searchPath) (Element, bool) {
 		return l.comp(score, n)
 	}
 
-	return l.searchWithPoscomp(poscomp, path)
+	return l.searchToPos(poscomp, path)
 }
 
 func (l *List) searchToRank(rank int, path *searchPath) (Element, bool) {
@@ -440,5 +435,5 @@ func (l *List) searchToRank(rank int, path *searchPath) (Element, bool) {
 		}
 		return ret
 	}
-	return l.searchWithPoscomp(poscomp, path)
+	return l.searchToPos(poscomp, path)
 }

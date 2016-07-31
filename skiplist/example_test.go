@@ -7,6 +7,8 @@ package skiplist_test
 import (
 	"fmt"
 	"github.com/someonegg/gocontainer/skiplist"
+	//"math/rand"
+	//"time"
 )
 
 type elem struct {
@@ -15,23 +17,57 @@ type elem struct {
 }
 
 func elemCompare(l, r skiplist.Scorable) int {
-	el := l.(*elem)
-	er := r.(*elem)
-	return el.v - er.v
+	vl := int(0)
+	switch v := l.(type) {
+	case int:
+		vl = v
+	case *elem:
+		vl = v.v
+	default:
+		panic(l)
+	}
+	vr := int(0)
+	switch v := r.(type) {
+	case int:
+		vr = v
+	case *elem:
+		vr = v.v
+	default:
+		panic(r)
+	}
+	return vl - vr
 }
 
 func Example() {
+	//rand.Seed(time.Now().Unix())
+
 	// An empty skiplist and put some numbers in it.
 	l := skiplist.NewList(elemCompare)
 
 	// add and print rank
-	fmt.Println(l.Add(&elem{v: 4}))
-	fmt.Println(l.Add(&elem{v: 1}))
-	fmt.Println(l.Add(&elem{v: 3}))
-	fmt.Println(l.Add(&elem{v: 2}))
-	fmt.Println(l.Add(&elem{v: 4}))
+	e1 := &elem{v: 4}
+	l.Add(e1)
+	fmt.Println(l.Rank(e1))
+
+	e2 := &elem{v: 1}
+	l.Add(e2)
+	fmt.Println(l.Rank(e2))
+
+	e3 := &elem{v: 3}
+	l.Add(e3)
+	fmt.Println(l.Rank(e3))
+
+	e4 := &elem{v: 2}
+	l.Add(e4)
+	fmt.Println(l.Rank(e4))
+
+	e5 := &elem{v: 4}
+	l.Add(e5)
+	fmt.Println(l.Rank(e5))
+
 	e6 := &elem{v: 6}
-	fmt.Println(l.Add(e6))
+	l.Add(e6)
+	fmt.Println(l.Rank(e6))
 
 	fmt.Println()
 
@@ -42,8 +78,8 @@ func Example() {
 
 	fmt.Println()
 
-	l.Remove(e6)
-	l.Remove(l.FindOfRank(4))
+	l.Remove(l.Find(6))
+	l.Remove(l.Get(4))
 
 	// print list after remove.
 	for e := l.Front(); e != nil; e = e.Next() {
