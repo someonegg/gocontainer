@@ -13,6 +13,7 @@
 package skiplist
 
 import (
+	"fmt"
 	"math/rand"
 )
 
@@ -436,4 +437,26 @@ func (l *List) searchToRank(rank int, path *searchPath) (Element, bool) {
 		return ret
 	}
 	return l.searchToPos(poscomp, path)
+}
+
+func (l *List) dump() {
+	fmt.Println("TotalLevel:", l.mlev, " ", "Length:", l.len)
+	fmt.Println()
+	for i := l.mlev - 1; i >= 0; i-- {
+		fmt.Println("Level:", i)
+		e := Element(l.root)
+		eN := e.getNode()
+		fmt.Print("  ")
+		for {
+			fmt.Println("\t", eN.lev[i].span)
+
+			e = eN.lev[i].next
+			eN = e.getNode()
+			if eN == l.root {
+				break
+			}
+			fmt.Print(e, " ")
+		}
+		fmt.Println()
+	}
 }
