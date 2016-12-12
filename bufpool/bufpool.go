@@ -31,7 +31,7 @@ func init() {
 	}
 }
 
-func BufGet(size int) []byte {
+func Get(size int) []byte {
 	if size == 0 {
 		return nil
 	}
@@ -50,7 +50,7 @@ func BufGet(size int) []byte {
 	return make([]byte, size, size)
 }
 
-func BufPut(b []byte) {
+func Put(b []byte) {
 	size := cap(b)
 
 	if size == 0 {
