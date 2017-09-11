@@ -11,30 +11,9 @@ import (
 	//"time"
 )
 
-type elem struct {
-	skiplist.Node
-	v int
-}
-
 func elemCompare(l, r skiplist.Scorable) int {
-	vl := int(0)
-	switch v := l.(type) {
-	case int:
-		vl = v
-	case *elem:
-		vl = v.v
-	default:
-		panic(l)
-	}
-	vr := int(0)
-	switch v := r.(type) {
-	case int:
-		vr = v
-	case *elem:
-		vr = v.v
-	default:
-		panic(r)
-	}
+	vl := l.(int)
+	vr := r.(int)
 	return vl - vr
 }
 
@@ -45,35 +24,29 @@ func Example() {
 	l := skiplist.NewList(elemCompare)
 
 	// add and print rank
-	e1 := &elem{v: 4}
-	l.Add(e1)
+	e1 := l.Add(4)
 	fmt.Println(l.Rank(e1))
 
-	e2 := &elem{v: 1}
-	l.Add(e2)
+	e2 := l.Add(1)
 	fmt.Println(l.Rank(e2))
 
-	e3 := &elem{v: 3}
-	l.Add(e3)
+	e3 := l.Add(3)
 	fmt.Println(l.Rank(e3))
 
-	e4 := &elem{v: 2}
-	l.Add(e4)
+	e4 := l.Add(2)
 	fmt.Println(l.Rank(e4))
 
-	e5 := &elem{v: 4}
-	l.Add(e5)
+	e5 := l.Add(4)
 	fmt.Println(l.Rank(e5))
 
-	e6 := &elem{v: 6}
-	l.Add(e6)
+	e6 := l.Add(6)
 	fmt.Println(l.Rank(e6))
 
 	fmt.Println()
 
 	// print list after add.
 	for e := l.Front(); e != nil; e = e.Next() {
-		fmt.Println(e.(*elem).v)
+		fmt.Println(e.Value)
 	}
 
 	fmt.Println()
@@ -83,7 +56,7 @@ func Example() {
 
 	// print list after remove.
 	for e := l.Front(); e != nil; e = e.Next() {
-		fmt.Println(e.(*elem).v)
+		fmt.Println(e.Value)
 	}
 
 	// Output:
