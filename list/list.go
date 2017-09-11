@@ -6,6 +6,7 @@
 // The list's method is similar to standard "container/list".
 // The main difference is:
 //   list management structure needs to be embedded into your element.
+// Not recommended under normal conditions.
 package list
 
 // Element interface is used to traverse the list.
