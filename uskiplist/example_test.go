@@ -21,6 +21,46 @@ func Example() {
 	rand.Seed(time.Now().Unix())
 	l := uskiplist.NewByInteger()
 
+	testIterate := func() {
+		fmt.Println("l", l.Len())
+		fmt.Println()
+
+		n := 0
+		l.Iterate(nil, func(e unsafe.Pointer) bool {
+			n++
+			v := (*item)(e).score
+			if v > -100 && v < 0 {
+				fmt.Println(v)
+			}
+			return true
+		})
+		fmt.Println("n", n)
+		fmt.Println()
+
+		n = 0
+		l.IterateByInteger(-20, func(e unsafe.Pointer) bool {
+			n++
+			v := (*item)(e).score
+			if v < 0 {
+				fmt.Println(v)
+			}
+			return true
+		})
+		fmt.Println("n", n)
+		fmt.Println()
+	}
+
+	testSample := func(step int) {
+		n := 0
+		l.Sample(step, func(e unsafe.Pointer) bool {
+			n++
+			return true
+		})
+		if n == 0 {
+			fmt.Println("sample wrong")
+		}
+	}
+
 	l.Insert(unsafe.Pointer(&item{score: -7}))
 	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
 	l.Insert(unsafe.Pointer(&item{score: -19}))
@@ -35,7 +75,6 @@ func Example() {
 	for l.Len() < 10 {
 		l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
 	}
-
 	for i := 0; i < 128; {
 		v := rand.Int63()
 		if l.GetByInteger(v) == nil {
@@ -51,7 +90,9 @@ func Example() {
 		}
 	}
 
-	fmt.Println(l.Len())
+	testIterate()
+	testSample(128)
+
 	e := l.GetByInteger(-7)
 	fmt.Println((*item)(e).score)
 	e = l.GetByInteger(-19)
@@ -67,7 +108,6 @@ func Example() {
 	l.DeleteByInteger(-53)
 	l.DeleteByInteger(-2)
 
-	fmt.Println(l.Len())
 	e = l.GetByInteger(-7)
 	fmt.Println((*item)(e).score)
 	e = l.GetByInteger(-19)
@@ -80,93 +120,98 @@ func Example() {
 	fmt.Println(e)
 	fmt.Println()
 
-	fmt.Println(l.Len())
-	n := 0
-	l.Iterate(nil, func(e unsafe.Pointer) bool {
-		n++
-		v := (*item)(e).score
-		if v > -100 && v < 0 {
-			fmt.Println(v)
-		}
-		return true
-	})
-	fmt.Println(n)
-	fmt.Println()
+	testIterate()
+	testSample(256)
 
 	l.Insert(unsafe.Pointer(&item{score: -20}))
 	e = l.GetByInteger(-20)
 	fmt.Println((*item)(e).score)
 	fmt.Println()
 
-	fmt.Println(l.Len())
-	n = 0
+	testIterate()
+	testSample(32)
+
+	d := 0
 	l.Iterate(nil, func(e unsafe.Pointer) bool {
-		n++
 		v := (*item)(e).score
-		if v > -100 && v < 0 {
-			fmt.Println(v)
+		if v < -100 {
+			d++
+			l.Delete(e)
 		}
 		return true
 	})
-	fmt.Println(n)
+	fmt.Println("d", d)
 	fmt.Println()
 
-	fmt.Println(l.Len())
-	n = 0
-	l.IterateByInteger(-20, func(e unsafe.Pointer) bool {
-		n++
-		v := (*item)(e).score
-		if v < 0 {
-			fmt.Println(v)
-		}
-		return true
-	})
-	fmt.Println(n)
-	fmt.Println()
-
-	n = 0
-	l.Sample(128, func(e unsafe.Pointer) bool {
-		n++
-		return true
-	})
-	if n == 0 {
-		fmt.Println("sample wrong")
-	}
+	testIterate()
+	testSample(64)
 
 	// Output:
-	// 266
+	// l 266
+	//
+	// -53
+	// -31
+	// -19
+	// -7
+	// -2
+	// n 266
+	//
+	// -19
+	// -7
+	// -2
+	// n 136
+	//
 	// -7
 	// -19
 	// -53
 	// -31
 	// -2
 	//
-	// 264
 	// -7
 	// -19
 	// <nil>
 	// -31
 	// <nil>
 	//
-	// 264
+	// l 264
+	//
 	// -31
 	// -19
 	// -7
-	// 264
+	// n 264
+	//
+	// -19
+	// -7
+	// n 135
 	//
 	// -20
 	//
-	// 265
+	// l 265
+	//
 	// -31
 	// -20
 	// -19
 	// -7
-	// 265
+	// n 265
 	//
-	// 265
 	// -20
 	// -19
 	// -7
-	// 136
+	// n 136
+	//
+	// d 128
+	//
+	// l 137
+	//
+	// -31
+	// -20
+	// -19
+	// -7
+	// n 137
+	//
+	// -20
+	// -19
+	// -7
+	// n 136
 	//
 }

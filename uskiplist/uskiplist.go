@@ -196,8 +196,10 @@ func (l *List) Delete(e unsafe.Pointer) {
 type Iterator func(e unsafe.Pointer) bool
 
 // Iterate will call iterator once for each element greater or equal than pivot
-// in ascending order. It will stop whenever the iterator returns false.
-// Iterate will start from the head when pivot is nil.
+// in ascending order.
+//   The current element can be deleted in Iterator.
+//   It will stop whenever the iterator returns false.
+//   Iterate will start from the head when pivot is nil.
 func (l *List) Iterate(pivot unsafe.Pointer, iterator Iterator) {
 	var (
 		cur   *element
@@ -223,30 +225,37 @@ func (l *List) Iterate(pivot unsafe.Pointer, iterator Iterator) {
 		}
 	}
 
+	next := cur.next[1]
+
 	for {
 		for curL0 != nil {
-			if !iterator(unsafe.Pointer(curL0)) {
-				return
-			}
+			save := curL0
 
 			curL0 = curL0.next
-			if unsafe.Pointer(curL0) == unsafe.Pointer(cur.next[1]) {
+			if unsafe.Pointer(curL0) == unsafe.Pointer(next) {
 				curL0 = nil
+			}
+
+			if !iterator(unsafe.Pointer(save)) {
+				return
 			}
 		}
 
-		cur = cur.next[1]
-		if cur == nil {
+		if next == nil {
 			break
+		}
+
+		cur = next
+		next = cur.next[1]
+
+		if cur.next[0] != next {
+			curL0 = (*elementL0)(unsafe.Pointer(cur.next[0]))
 		}
 
 		if !iterator(unsafe.Pointer(cur)) {
 			return
 		}
 
-		if cur.next[0] != cur.next[1] {
-			curL0 = (*elementL0)(unsafe.Pointer(cur.next[0]))
-		}
 	}
 }
 
