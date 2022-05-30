@@ -130,7 +130,7 @@ func Example() {
 		return true
 	})
 	if n == 0 {
-		fmt.Println("sample")
+		fmt.Println("sample wrong")
 	}
 
 	// Output:

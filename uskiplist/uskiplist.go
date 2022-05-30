@@ -92,42 +92,6 @@ func New(less LessFunc) *List {
 	return l
 }
 
-func NewByString() *List {
-	return New(func(l, r unsafe.Pointer) bool {
-		type element struct {
-			Header
-			key string
-		}
-		tl := (*element)(l)
-		tr := (*element)(r)
-		return tl.key < tr.key
-	})
-}
-
-func NewByInteger() *List {
-	return New(func(l, r unsafe.Pointer) bool {
-		type element struct {
-			Header
-			key int64
-		}
-		tl := (*element)(l)
-		tr := (*element)(r)
-		return tl.key < tr.key
-	})
-}
-
-func NewByFloat() *List {
-	return New(func(l, r unsafe.Pointer) bool {
-		type element struct {
-			Header
-			key float64
-		}
-		tl := (*element)(l)
-		tr := (*element)(r)
-		return tl.key < tr.key
-	})
-}
-
 // Len returns number of elements in the skiplist.
 func (l *List) Len() int { return l.len }
 
@@ -135,30 +99,6 @@ func (l *List) Len() int { return l.len }
 func (l *List) Get(e unsafe.Pointer) unsafe.Pointer {
 	t, _, _ := l.search(e, l.idealLevel(), nil)
 	return t
-}
-
-func (l *List) GetByString(k string) unsafe.Pointer {
-	type element struct {
-		Header
-		key string
-	}
-	return l.Get(unsafe.Pointer(&element{key: k}))
-}
-
-func (l *List) GetByInteger(k int64) unsafe.Pointer {
-	type element struct {
-		Header
-		key int64
-	}
-	return l.Get(unsafe.Pointer(&element{key: k}))
-}
-
-func (l *List) GetByFloat(k float64) unsafe.Pointer {
-	type element struct {
-		Header
-		key float64
-	}
-	return l.Get(unsafe.Pointer(&element{key: k}))
 }
 
 // Insert inserts a new element, do nothing when found.
@@ -253,30 +193,6 @@ func (l *List) Delete(e unsafe.Pointer) {
 	l.len--
 }
 
-func (l *List) DeleteByString(k string) {
-	type element struct {
-		Header
-		key string
-	}
-	l.Delete(unsafe.Pointer(&element{key: k}))
-}
-
-func (l *List) DeleteByInteger(k int64) {
-	type element struct {
-		Header
-		key int64
-	}
-	l.Delete(unsafe.Pointer(&element{key: k}))
-}
-
-func (l *List) DeleteByFloat(k float64) {
-	type element struct {
-		Header
-		key float64
-	}
-	l.Delete(unsafe.Pointer(&element{key: k}))
-}
-
 type Iterator func(e unsafe.Pointer) bool
 
 // Iterate will call iterator once for each element greater or equal than pivot
@@ -334,33 +250,9 @@ func (l *List) Iterate(pivot unsafe.Pointer, iterator Iterator) {
 	}
 }
 
-func (l *List) IterateByString(k string, iterator Iterator) {
-	type element struct {
-		Header
-		key string
-	}
-	l.Iterate(unsafe.Pointer(&element{key: k}), iterator)
-}
-
-func (l *List) IterateByInteger(k int64, iterator Iterator) {
-	type element struct {
-		Header
-		key int64
-	}
-	l.Iterate(unsafe.Pointer(&element{key: k}), iterator)
-}
-
-func (l *List) IterateByFloat(k float64, iterator Iterator) {
-	type element struct {
-		Header
-		key float64
-	}
-	l.Iterate(unsafe.Pointer(&element{key: k}), iterator)
-}
-
-// Sample samples about one for every scale elements.
-func (l *List) Sample(scale int, iterator Iterator) {
-	lev := int(math.Round(math.Log2(float64(scale))/2.0 + 1.0))
+// Sample samples about one for every step elements.
+func (l *List) Sample(step int, iterator Iterator) {
+	lev := int(math.Round(math.Log2(float64(step))/2.0 + 1.0))
 	if lev < 2 {
 		lev = 2
 	}
