@@ -6,6 +6,7 @@ gocontainer contains several optimized container implementations.
 * Package queue contains some queue implements.
 * Package rbuf implements simple ring buffer.
 * Package skiplist implements a skip list.
+* Package uskiplist implements a skiplist using unsafe operations to minimize memory and references.
 
 Documentation
 -------------

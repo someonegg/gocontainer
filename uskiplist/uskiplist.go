@@ -261,6 +261,14 @@ func (l *List) Iterate(pivot unsafe.Pointer, iterator Iterator) {
 
 // Sample samples about one for every step elements.
 func (l *List) Sample(step int, iterator Iterator) {
+	if l.len == 0 {
+		return
+	}
+	if step >= l.len {
+		iterator(unsafe.Pointer(l.root.next[0]))
+		return
+	}
+
 	lev := int(math.Round(math.Log2(float64(step))/2.0 + 1.0))
 	if lev < 2 {
 		lev = 2
