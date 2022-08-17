@@ -11,10 +11,12 @@ import (
 )
 
 // DataBox internal:
-//   Box has an infinite number of cells, each cell has a index (0 1 2 ...).
-//   Data will be copied into a cell.
-//   When the current cell can not put the new Data, enable the next one.
-//   Cell size has a default value, if less than the new Data, use Data size.
+//
+//	Box has an infinite number of cells, each cell has a index (0 1 2 ...).
+//	Data will be copied into a cell.
+//	When the current cell can not put the new Data, enable the next one.
+//	Cell size has a default value, if less than the new Data, use Data size.
+//
 // DataBox support for "single-write + multi-read" without locker.
 type DataBox struct {
 	cellSize int

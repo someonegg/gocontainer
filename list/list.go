@@ -5,7 +5,9 @@
 // Package list implements a doubly linked list.
 // The list's method is similar to standard "container/list".
 // The main difference is:
-//   list management structure needs to be embedded into your element.
+//
+//	list management structure needs to be embedded into your element.
+//
 // Not recommended under normal conditions.
 package list
 

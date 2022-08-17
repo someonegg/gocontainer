@@ -25,32 +25,35 @@ const (
 // Header should be embedded in the skiplist element struct:
 //
 // generically
-//   type Element struct {
-//       uskiplist.Header
-//       ...
-//   }
+//
+//	type Element struct {
+//	    uskiplist.Header
+//	    ...
+//	}
 //
 // sort by string
-//   type Element struct {
-//       uskiplist.Header
-//       abc string
-//       ...
-//   }
+//
+//	type Element struct {
+//	    uskiplist.Header
+//	    abc string
+//	    ...
+//	}
 //
 // sort by integer
-//   type Element struct {
-//       uskiplist.Header
-//       abc int64
-//       ...
-//   }
+//
+//	type Element struct {
+//	    uskiplist.Header
+//	    abc int64
+//	    ...
+//	}
 //
 // sort by float
-//   type Element struct {
-//       uskiplist.Header
-//       abc float64
-//       ...
-//   }
 //
+//	type Element struct {
+//	    uskiplist.Header
+//	    abc float64
+//	    ...
+//	}
 type Header struct {
 	next unsafe.Pointer
 }
@@ -197,9 +200,10 @@ type Iterator func(e unsafe.Pointer) bool
 
 // Iterate will call iterator once for each element greater or equal than pivot
 // in ascending order.
-//   The current element can be deleted in Iterator.
-//   It will stop whenever the iterator returns false.
-//   Iterate will start from the head when pivot is nil.
+//
+//	The current element can be deleted in Iterator.
+//	It will stop whenever the iterator returns false.
+//	Iterate will start from the head when pivot is nil.
 func (l *List) Iterate(pivot unsafe.Pointer, iterator Iterator) {
 	var (
 		cur   *element

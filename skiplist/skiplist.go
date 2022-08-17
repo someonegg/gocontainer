@@ -4,45 +4,39 @@
 
 // Package skiplist implements a skip list. Compared with the classical
 // version, there are two changes:
-//   this implementation allows for repeated elements.
-//   there is a back pointer, so it's a doubly linked list.
+//
+//	this implementation allows for repeated elements.
+//	there is a back pointer, so it's a doubly linked list.
+//
 // List will be sorted by score:
-//   in ascending order.
-//   with rank(0-based), also in ascending order.
-//   "what is the score, how to compare" is defined by the user.
+//
+//	in ascending order.
+//	with rank(0-based), also in ascending order.
+//	"what is the score, how to compare" is defined by the user.
 package skiplist
 
 import (
 	"fmt"
 	"math/rand"
+	"time"
 )
 
-// PROPABILITY is the fixed probability.
-const PROPABILITY float32 = 0.25
+const (
+	// PROPABILITY is the fixed probability.
+	PROPABILITY float32 = 0.25
 
-// DefaultMaxLevel is the default level limit of skip list.
-var DefaultMaxLevel = 32
-
-type pseudoRandSource struct{}
-
-func (r pseudoRandSource) Int63() int64 {
-	return rand.Int63()
-}
-
-func (r pseudoRandSource) Seed(seed int64) {
-	rand.Seed(seed)
-}
-
-// DefaultRandSource is the default rand source.
-var DefaultRandSource rand.Source = pseudoRandSource{}
+	DefaultLevel = 16
+	MaximumLevel = 32
+)
 
 // Scorable object can be passed to CompareFunc.
 type Scorable interface{}
 
 // CompareFunc can compare two scorable objects, returns
-//   <0 if l <  r
-//    0 if l == r
-//   >0 if l >  r
+//
+//	<0 if l <  r
+//	 0 if l == r
+//	>0 if l >  r
 type CompareFunc func(l, r Scorable) int
 
 // Element is an element of a skip list.
@@ -86,33 +80,30 @@ func (e *Element) prev() *Element {
 
 // List represents a skip list.
 type List struct {
-	mlev int
-	rnds rand.Source
+	maxL int
+	rndS rand.Source
 	comp CompareFunc
 	root *Element
 	len  int
 }
 
-// NewList creates a new skip list, with DefaultMaxLevel\DefaultRandSource\compare.
+// NewList creates a new skip list, with DefaultLevel\compare.
 func NewList(compare CompareFunc) *List {
-	return NewListEx(DefaultMaxLevel, DefaultRandSource, compare)
+	return NewListEx(DefaultLevel, compare)
 }
 
-// NewListEx creates a new skip list, with maxLevel\randSource\compare.
-func NewListEx(maxLevel int, randSource rand.Source, compare CompareFunc) *List {
-	if maxLevel < 1 {
-		panic("maxLevel < 1")
-	}
-	if randSource == nil {
-		panic("randSource is nil")
+// NewListEx creates a new skip list, with maxLevel\compare.
+func NewListEx(maxLevel int, compare CompareFunc) *List {
+	if maxLevel < 1 || maxLevel > MaximumLevel {
+		panic("maxLevel < 1 or maxLevel > MaximumLevel")
 	}
 	if compare == nil {
 		panic("compare is nil")
 	}
 
 	l := &List{
-		mlev: maxLevel,
-		rnds: randSource,
+		maxL: maxLevel,
+		rndS: rand.NewSource(time.Now().Unix()),
 		comp: compare,
 		root: &Element{
 			lev:  make([]level, maxLevel),
@@ -120,7 +111,7 @@ func NewListEx(maxLevel int, randSource rand.Source, compare CompareFunc) *List 
 		},
 	}
 
-	for i := 0; i < l.mlev; i++ {
+	for i := 0; i < l.maxL; i++ {
 		l.root.lev[i].next = l.root
 		l.root.lev[i].prev = l.root
 		l.root.lev[i].span = 0
@@ -149,7 +140,8 @@ func (l *List) Back() *Element {
 }
 
 // Get the element at rank, return nil if rank is invalid.
-//   0 <= valid rank < list.Len()
+//
+//	0 <= valid rank < list.Len()
 func (l *List) Get(rank int) *Element {
 	if rank < 0 || rank >= l.len {
 		return nil
@@ -188,7 +180,8 @@ func (l *List) Rank(e *Element) int {
 		return -1
 	}
 
-	path := l.searchPathOf(e)
+	path := &searchPath{}
+	l.searchPathOf(e, path)
 
 	span := 0
 	for _, v := range path.levSpan {
@@ -206,7 +199,7 @@ func (l *List) Add(v Scorable) *Element {
 }
 
 func (l *List) add(e *Element) {
-	path := l.newSearchPath()
+	path := &searchPath{}
 
 	ee, found := l.searchToScore(e.Value, path)
 	if found && ee == l.root {
@@ -250,7 +243,7 @@ func (l *List) add(e *Element) {
 		revspan += path.levSpan[i]
 	}
 
-	for i := nlev; i < l.mlev; i++ {
+	for i := nlev; i < l.maxL; i++ {
 		path.prev[i].lev[i].span++
 	}
 
@@ -262,7 +255,7 @@ func (l *List) randLevel() int {
 	const RANDMAX int64 = 65536
 	const RANDTHRESHOLD int64 = int64(float32(RANDMAX) * PROPABILITY)
 	nlev := 1
-	for l.rnds.Int63()%RANDMAX < RANDTHRESHOLD && nlev <= l.mlev {
+	for l.rndS.Int63()%RANDMAX < RANDTHRESHOLD && nlev <= l.maxL {
 		nlev++
 	}
 	return nlev
@@ -277,7 +270,8 @@ func (l *List) Remove(e *Element) {
 }
 
 func (l *List) remove(e *Element) {
-	path := l.searchPathOf(e)
+	path := &searchPath{}
+	l.searchPathOf(e, path)
 
 	for i := 0; i < len(e.lev); i++ {
 		n := e.lev[i].next
@@ -287,7 +281,7 @@ func (l *List) remove(e *Element) {
 		p.lev[i].span += e.lev[i].span - 1
 	}
 
-	for i := len(e.lev); i < l.mlev; i++ {
+	for i := len(e.lev); i < l.maxL; i++ {
 		path.prev[i].lev[i].span--
 	}
 
@@ -298,20 +292,11 @@ func (l *List) remove(e *Element) {
 
 // searchPath represents search path of skip list.
 type searchPath struct {
-	prev    []*Element
-	levSpan []int
+	prev    [MaximumLevel]*Element
+	levSpan [MaximumLevel]int
 }
 
-func (l *List) newSearchPath() *searchPath {
-	return &searchPath{
-		prev:    make([]*Element, l.mlev),
-		levSpan: make([]int, l.mlev),
-	}
-}
-
-func (l *List) searchPathOf(e *Element) *searchPath {
-	path := l.newSearchPath()
-
+func (l *List) searchPathOf(e *Element, path *searchPath) {
 	path.prev[0] = e
 	path.levSpan[0] = 0
 
@@ -338,14 +323,13 @@ func (l *List) searchPathOf(e *Element) *searchPath {
 
 		path.levSpan[ilev] = levSpan
 	}
-
-	return path
 }
 
 // return
-//   <0 goto down
-//    0 found
-//   >0 goto next
+//
+//	<0 goto down
+//	 0 found
+//	>0 goto next
 type poscompFunc func(ilev int, p, n *Element) int
 
 func (l *List) searchToPos(poscomp poscompFunc, path *searchPath) (*Element, bool) {
@@ -353,7 +337,7 @@ func (l *List) searchToPos(poscomp poscompFunc, path *searchPath) (*Element, boo
 
 	p := l.root
 
-	for i := l.mlev - 1; i >= 0; i-- {
+	for i := l.maxL - 1; i >= 0; i-- {
 		levSpan := 0
 
 		equal := false
@@ -414,9 +398,9 @@ func (l *List) searchToRank(rank int, path *searchPath) (*Element, bool) {
 }
 
 func (l *List) dump() {
-	fmt.Println("TotalLevel:", l.mlev, " ", "Length:", l.len)
+	fmt.Println("TotalLevel:", l.maxL, " ", "Length:", l.len)
 	fmt.Println()
-	for i := l.mlev - 1; i >= 0; i-- {
+	for i := l.maxL - 1; i >= 0; i-- {
 		fmt.Println("Level:", i)
 		e := l.root
 
