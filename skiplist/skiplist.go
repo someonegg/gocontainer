@@ -255,7 +255,7 @@ func (l *List) randLevel() int {
 	const RANDMAX int64 = 65536
 	const RANDTHRESHOLD int64 = int64(float32(RANDMAX) * PROPABILITY)
 	nlev := 1
-	for l.rndS.Int63()%RANDMAX < RANDTHRESHOLD && nlev <= l.maxL {
+	for l.rndS.Int63()%RANDMAX < RANDTHRESHOLD && nlev < l.maxL {
 		nlev++
 	}
 	return nlev
