@@ -9,6 +9,7 @@ package uskiplist
 import (
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -21,6 +22,26 @@ const (
 	InitialLevel = 4
 	MaximumLevel = 32
 )
+
+type lockedSource struct {
+	lk  sync.Mutex
+	src rand.Source
+}
+
+func (r *lockedSource) Int63() (n int64) {
+	r.lk.Lock()
+	n = r.src.Int63()
+	r.lk.Unlock()
+	return
+}
+
+func (r *lockedSource) Seed(seed int64) {
+	r.lk.Lock()
+	r.src.Seed(seed)
+	r.lk.Unlock()
+}
+
+var gRandSource rand.Source = &lockedSource{src: rand.NewSource(time.Now().Unix())}
 
 // Header should be embedded in the skiplist element struct:
 //
@@ -72,7 +93,6 @@ type LessFunc func(l, r unsafe.Pointer) bool
 
 type List struct {
 	less LessFunc
-	rndS rand.Source
 	maxL int
 	len  int
 	root element
@@ -86,7 +106,6 @@ func New(less LessFunc) *List {
 
 	l := &List{
 		less: less,
-		rndS: rand.NewSource(time.Now().Unix()),
 		maxL: InitialLevel,
 		len:  0,
 	}
@@ -338,7 +357,7 @@ func (l *List) randLevel() int {
 	const RANDMAX int64 = 65536
 	const RANDTHRESHOLD int64 = int64(float32(RANDMAX) * PROPABILITY)
 	lev := 1
-	for l.rndS.Int63()%RANDMAX < RANDTHRESHOLD && lev < l.maxL {
+	for gRandSource.Int63()%RANDMAX < RANDTHRESHOLD && lev < l.maxL {
 		lev++
 	}
 	return lev
