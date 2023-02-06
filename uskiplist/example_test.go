@@ -2,35 +2,41 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package uskiplist_test
+package uskiplist
 
 import (
 	"fmt"
-	"github.com/someonegg/gocontainer/uskiplist"
 	"math/rand"
 	"time"
-	"unsafe"
 )
 
-type item struct {
-	uskiplist.Header
-	score int64
+type Item struct {
+	Value int64
+}
+
+func (i Item) GetKey() ListKey {
+	return ListKey(i.Value)
+}
+
+type ListKey int64
+
+func (i ListKey) Less(i2 ListKey) bool {
+	return i < i2
 }
 
 func Example() {
 	rand.Seed(time.Now().Unix())
-	l := uskiplist.NewByInteger()
+	l := NewList[ListKey, Item]()
 
 	testIterate := func() {
 		fmt.Println("l", l.Len())
 		fmt.Println()
 
 		n := 0
-		l.Iterate(nil, func(e unsafe.Pointer) bool {
+		l.Iterate(func(i *Item) bool {
 			n++
-			v := (*item)(e).score
-			if v > -100 && v < 0 {
-				fmt.Println(v)
+			if i.Value > -100 && i.Value < 0 {
+				fmt.Println(i.Value)
 			}
 			return true
 		})
@@ -38,11 +44,10 @@ func Example() {
 		fmt.Println()
 
 		n = 0
-		l.IterateByInteger(-20, func(e unsafe.Pointer) bool {
+		l.IterateWithPivot(-20, func(i *Item) bool {
 			n++
-			v := (*item)(e).score
-			if v < 0 {
-				fmt.Println(v)
+			if i.Value < 0 {
+				fmt.Println(i.Value)
 			}
 			return true
 		})
@@ -52,7 +57,7 @@ func Example() {
 
 	testSample := func(step int) {
 		n := 0
-		l.Sample(step, func(e unsafe.Pointer) bool {
+		l.Sample(step, func(i *Item) bool {
 			n++
 			return true
 		})
@@ -61,82 +66,85 @@ func Example() {
 		}
 	}
 
-	l.Insert(unsafe.Pointer(&item{score: -7}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
-	l.Insert(unsafe.Pointer(&item{score: -19}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
-	l.Insert(unsafe.Pointer(&item{score: -53}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
-	l.Insert(unsafe.Pointer(&item{score: -31}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
-	l.Insert(unsafe.Pointer(&item{score: -2}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
+	l.Insert(&Item{-7})
+	l.Insert(&Item{rand.Int63()})
+	l.Insert(&Item{-19})
+	l.Insert(&Item{rand.Int63()})
+	l.Insert(&Item{-53})
+	l.Insert(&Item{rand.Int63()})
+	l.Insert(&Item{-31})
+	l.Insert(&Item{rand.Int63()})
+	l.Insert(&Item{-2})
+	l.Insert(&Item{rand.Int63()})
 
+	var k int64
 	for l.Len() < 10 {
-		l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
+		k = rand.Int63()
+		l.Insert(&Item{Value: k})
 	}
 	for i := 0; i < 128; {
-		v := rand.Int63()
-		if l.GetByInteger(v) == nil {
-			l.Insert(unsafe.Pointer(&item{score: v}))
+		k = rand.Int63()
+		if l.Get(ListKey(k)) == nil {
+			l.Insert(&Item{Value: k})
 			i++
 		}
 	}
 	for i := 0; i < 128; {
-		v := -rand.Int63()
-		if v < -100 && l.GetByInteger(v) == nil {
-			l.Insert(unsafe.Pointer(&item{score: v}))
-			i++
+		k = -rand.Int63()
+		if k < -100 {
+			if l.Get(ListKey(k)) == nil {
+				l.Insert(&Item{Value: k})
+				i++
+			}
 		}
 	}
 
 	testIterate()
 	testSample(128)
 
-	e := l.GetByInteger(-7)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-19)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-53)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-31)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-2)
-	fmt.Println((*item)(e).score)
+	e := l.Get(-7)
+	fmt.Println(e.Value)
+	e = l.Get(-19)
+	fmt.Println(e.Value)
+	e = l.Get(-53)
+	fmt.Println(e.Value)
+	e = l.Get(-31)
+	fmt.Println(e.Value)
+	e = l.Get(-2)
+	fmt.Println(e.Value)
 	fmt.Println()
 
-	l.DeleteByInteger(-53)
-	l.DeleteByInteger(-2)
+	l.Delete(-53)
+	l.Delete(-2)
 
-	e = l.GetByInteger(-7)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-19)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-53)
+	e = l.Get(-7)
+	fmt.Println(e.Value)
+	e = l.Get(-19)
+	fmt.Println(e.Value)
+	e = l.Get(-53)
 	fmt.Println(e)
-	e = l.GetByInteger(-31)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-2)
+	e = l.Get(-31)
+	fmt.Println(e.Value)
+	e = l.Get(-2)
 	fmt.Println(e)
 	fmt.Println()
 
 	testIterate()
 	testSample(256)
 
-	l.Insert(unsafe.Pointer(&item{score: -20}))
-	e = l.GetByInteger(-20)
-	fmt.Println((*item)(e).score)
+	l.Insert(&Item{Value: -20})
+	e = l.Get(-20)
+	fmt.Println(e.Value)
 	fmt.Println()
 
 	testIterate()
 	testSample(32)
 
 	d := 0
-	l.Iterate(nil, func(e unsafe.Pointer) bool {
-		v := (*item)(e).score
-		if v < -100 {
+	l.Iterate(func(i *Item) bool {
+		if i.GetKey() < -100 {
 			d++
-			l.Delete(e)
+			l.Delete(i.GetKey())
 		}
 		return true
 	})
