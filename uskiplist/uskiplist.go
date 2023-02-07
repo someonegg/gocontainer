@@ -21,90 +21,90 @@ type HasKey[K any] interface {
 	GetKey() K
 }
 
-type levels[K Comparable[K], V HasKey[K]] [MaximumLevel]*element[K, V]
+type levels[K Comparable[K], PV HasKey[K]] []*element[K, PV]
 
-type element[K Comparable[K], V HasKey[K]] struct {
-	next  *levels[K, V]
-	value *V
+type element[K Comparable[K], PV HasKey[K]] struct {
+	next  *levels[K, PV]
+	value PV
 }
 
-type searchPath[K Comparable[K], V HasKey[K]] struct {
-	pre levels[K, V]
+type searchPath[K Comparable[K], PV HasKey[K]] struct {
+	pre [MaximumLevel]*element[K, PV]
 }
 
-type List[K Comparable[K], V HasKey[K]] struct {
+type List[K Comparable[K], PV HasKey[K]] struct {
 	maxL int
 	len  int
-	root element[K, V]
+	root element[K, PV]
 }
 
-func NewList[K Comparable[K], V HasKey[K]]() *List[K, V] {
-	l := &List[K, V]{
+func NewList[K Comparable[K], PV HasKey[K]]() *List[K, PV] {
+	l := &List[K, PV]{
 		maxL: InitialLevel,
 		len:  0,
 	}
-	l.root.next = (*levels[K, V])(makePointArray(l.maxL))
+	l.root.next = l.makePointArray(InitialLevel)
 	return l
 }
 
-func (l *List[K, V]) Len() int { return l.len }
+func (l *List[K, PV]) Len() int { return l.len }
 
-func (l *List[K, V]) Get(k K) (v *V) {
+func (l *List[K, PV]) Get(k K) (v PV) {
 	pre, f := l.search(k, l.idealLevel(), nil)
 	if f {
-		v = pre.next[0].value
+		v = (*pre.next)[0].value
 	}
 	return
 }
 
-func (l *List[K, V]) Insert(v *V) {
-	path := searchPath[K, V]{}
+func (l *List[K, PV]) Insert(v PV) {
 	lev := l.maxL
+	path := searchPath[K, PV]{}
 
-	_, f := l.search((*v).GetKey(), lev, &path)
+	_, f := l.search(v.GetKey(), lev, &path)
 	if f {
 		return
 	}
 
 	lev = l.randLevel()
 
-	r := &element[K, V]{
+	r := &element[K, PV]{
 		value: v,
-		next:  (*levels[K, V])(makePointArray(lev)),
+		next:  l.makePointArray(lev),
 	}
 
 	for i := lev - 1; i >= 0; i-- {
-		r.next[i] = path.pre[i].next[i]
-		path.pre[i].next[i] = r
+		(*r.next)[i] = (*path.pre[i].next)[i]
+		(*path.pre[i].next)[i] = r
 	}
 
 	l.len++
 	l.adjust()
 }
 
-func (l *List[K, V]) Delete(k K) {
-	path := searchPath[K, V]{}
+func (l *List[K, PV]) Delete(k K) {
 	lev := l.maxL
+	path := searchPath[K, PV]{}
 
 	r, f := l.search(k, lev, &path)
 	if !f {
 		return
 	}
 
-	r = r.next[0]
+	r = (*r.next)[0]
 
 	for i := lev - 1; i >= 0; i-- {
-		if path.pre[i].next[i] == r {
-			next := r.next[i]
-			r.next[i] = nil
-			path.pre[i].next[i] = next
+		if (*path.pre[i].next)[i] == r {
+			next := (*r.next)[i]
+			(*r.next)[i] = nil
+			(*path.pre[i].next)[i] = next
 		}
 	}
 	l.len--
 
 }
 
-type Iterator[K Comparable[K], V HasKey[K]] func(*V) bool
+type Iterator[K Comparable[K], PV HasKey[K]] func(PV) bool
 
 // Iterate will call iterator once for each element greater or equal than pivot
 // in ascending order.
@@ -112,37 +112,37 @@ type Iterator[K Comparable[K], V HasKey[K]] func(*V) bool
 //	The current element can be deleted in Iterator.
 //	It will stop whenever the iterator returns false.
 //	Iterate will start from the head when pivot is nil.
-func (l *List[K, V]) Iterate(iterator Iterator[K, V]) {
+func (l *List[K, PV]) Iterate(iterator Iterator[K, PV]) {
 	l.iterate(&l.root, iterator)
 }
 
-func (l *List[K, V]) IterateWithPivot(pivot K, iterator Iterator[K, V]) {
+func (l *List[K, PV]) IterateWithPivot(pivot K, iterator Iterator[K, PV]) {
 	pre, _ := l.search(pivot, l.idealLevel(), nil)
 	l.iterate(pre, iterator)
 }
 
-func (l *List[K, V]) iterate(pre *element[K, V], iterator Iterator[K, V]) {
-	cur := pre.next[0]
+func (l *List[K, PV]) iterate(pre *element[K, PV], iterator Iterator[K, PV]) {
+	cur := (*pre.next)[0]
 	for cur != nil {
 		if !iterator(cur.value) {
 			return
 		}
 		// cur has been deleted, move cur pointer back
-		if pre.next[0] != cur {
+		if (*pre.next)[0] != cur {
 			cur = pre
 		} else {
 			pre = cur
 		}
-		cur = cur.next[0]
+		cur = (*cur.next)[0]
 	}
 }
 
-func (l *List[K, V]) Sample(step int, iterator Iterator[K, V]) {
+func (l *List[K, PV]) Sample(step int, iterator Iterator[K, PV]) {
 	if l.len == 0 {
 		return
 	}
 	if step >= l.len {
-		iterator(l.root.next[0].value)
+		iterator((*l.root.next)[0].value)
 		return
 	}
 
@@ -156,22 +156,22 @@ func (l *List[K, V]) Sample(step int, iterator Iterator[K, V]) {
 
 	i := lev - 1
 
-	if l.root.next[0] != l.root.next[i] {
-		if !iterator(l.root.next[0].value) {
+	if (*l.root.next)[0] != (*l.root.next)[i] {
+		if !iterator((*l.root.next)[0].value) {
 			return
 		}
 	}
 
-	cur := l.root.next[i]
+	cur := (*l.root.next)[i]
 	for cur != nil {
 		if !iterator(cur.value) {
 			return
 		}
-		cur = cur.next[i]
+		cur = (*cur.next)[i]
 	}
 }
 
-func (l *List[K, V]) search(k K, lev int, path *searchPath[K, V]) (pre *element[K, V], found bool) {
+func (l *List[K, PV]) search(k K, lev int, path *searchPath[K, PV]) (pre *element[K, PV], found bool) {
 	if lev < 2 {
 		lev = 2
 	}
@@ -182,22 +182,22 @@ func (l *List[K, V]) search(k K, lev int, path *searchPath[K, V]) (pre *element[
 
 	pre = &l.root
 	for i := lev - 1; i >= 0; i-- {
-		for pre.next[i] != nil && (*pre.next[i].value).GetKey().Less(k) {
-			pre = pre.next[i]
+		for (*pre.next)[i] != nil && (*pre.next)[i].value.GetKey().Less(k) {
+			pre = (*pre.next)[i]
 		}
 		if path != nil {
 			path.pre[i] = pre
 		}
 	}
 
-	if pre.next[0] != nil && !k.Less((*pre.next[0].value).GetKey()) {
+	if (*pre.next)[0] != nil && !k.Less((*pre.next)[0].value.GetKey()) {
 		found = true
 	}
 
 	return
 }
 
-func (l *List[K, V]) randLevel() int {
+func (l *List[K, PV]) randLevel() int {
 	const RANDMAX int64 = 65536
 	const RANDTHRESHOLD int64 = int64(float32(RANDMAX) * PROPABILITY)
 	lev := 1
@@ -208,7 +208,7 @@ func (l *List[K, V]) randLevel() int {
 }
 
 // [InitialLevel, MaximumLevel]
-func (l *List[K, V]) idealLevel() int {
+func (l *List[K, PV]) idealLevel() int {
 	//
 	var lev int
 	switch {
@@ -230,15 +230,15 @@ func (l *List[K, V]) idealLevel() int {
 	return lev
 }
 
-func (l *List[K, V]) adjust() {
+func (l *List[K, PV]) adjust() {
 	ideal := l.idealLevel()
 	if ideal > l.maxL {
 		lev := l.maxL
 		next := l.root.next
 		l.maxL = ideal
-		l.root.next = (*levels[K, V])(makePointArray(l.maxL))
+		l.root.next = l.makePointArray(l.maxL)
 		for i := 0; i < lev; i++ {
-			l.root.next[i] = next[i]
+			(*l.root.next)[i] = (*next)[i]
 		}
 	}
 }

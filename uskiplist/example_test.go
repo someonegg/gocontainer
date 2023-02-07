@@ -14,7 +14,7 @@ type Item struct {
 	Value int64
 }
 
-func (i Item) GetKey() ListKey {
+func (i *Item) GetKey() ListKey {
 	return ListKey(i.Value)
 }
 
@@ -26,7 +26,7 @@ func (i ListKey) Less(i2 ListKey) bool {
 
 func Example() {
 	rand.Seed(time.Now().Unix())
-	l := NewList[ListKey, Item]()
+	l := NewList[ListKey, *Item]()
 
 	testIterate := func() {
 		fmt.Println("l", l.Len())
