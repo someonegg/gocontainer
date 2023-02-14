@@ -7,7 +7,15 @@
 
 package uskiplist
 
-func (l *List[K, PV]) makePointArray(n int) *levels[K, PV] {
-	var r levels[K, PV] = make([]*element[K, PV], n, MaximumLevel)
-	return &r // escape to heap
+import "unsafe"
+
+func makePointArray(n int) unsafe.Pointer {
+	type slice struct {
+		array unsafe.Pointer
+		len   int
+		cap   int
+	}
+	s := make([]unsafe.Pointer, n)
+	ps := (*slice)(unsafe.Pointer(&s))
+	return ps.array
 }

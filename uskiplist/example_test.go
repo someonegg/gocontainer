@@ -11,11 +11,12 @@ import (
 )
 
 type Item struct {
-	Value int64
+	ElementHeader
+	V int64
 }
 
 func (i *Item) GetKey() ListKey {
-	return ListKey(i.Value)
+	return ListKey(i.V)
 }
 
 type ListKey int64
@@ -26,7 +27,7 @@ func (i ListKey) Less(i2 ListKey) bool {
 
 func Example() {
 	rand.Seed(time.Now().Unix())
-	l := NewList[ListKey, *Item]()
+	l := NewList[ListKey, Item, *Item]()
 
 	testIterate := func() {
 		fmt.Println("l", l.Len())
@@ -35,8 +36,8 @@ func Example() {
 		n := 0
 		l.Iterate(func(i *Item) bool {
 			n++
-			if i.Value > -100 && i.Value < 0 {
-				fmt.Println(i.Value)
+			if i.V > -100 && i.V < 0 {
+				fmt.Println(i.V)
 			}
 			return true
 		})
@@ -46,8 +47,8 @@ func Example() {
 		n = 0
 		l.IterateWithPivot(-20, func(i *Item) bool {
 			n++
-			if i.Value < 0 {
-				fmt.Println(i.Value)
+			if i.V < 0 {
+				fmt.Println(i.V)
 			}
 			return true
 		})
@@ -66,26 +67,26 @@ func Example() {
 		}
 	}
 
-	l.Insert(&Item{-7})
-	l.Insert(&Item{rand.Int63()})
-	l.Insert(&Item{-19})
-	l.Insert(&Item{rand.Int63()})
-	l.Insert(&Item{-53})
-	l.Insert(&Item{rand.Int63()})
-	l.Insert(&Item{-31})
-	l.Insert(&Item{rand.Int63()})
-	l.Insert(&Item{-2})
-	l.Insert(&Item{rand.Int63()})
+	l.Insert(&Item{V: -7})
+	l.Insert(&Item{V: rand.Int63()})
+	l.Insert(&Item{V: -19})
+	l.Insert(&Item{V: rand.Int63()})
+	l.Insert(&Item{V: -53})
+	l.Insert(&Item{V: rand.Int63()})
+	l.Insert(&Item{V: -31})
+	l.Insert(&Item{V: rand.Int63()})
+	l.Insert(&Item{V: -2})
+	l.Insert(&Item{V: rand.Int63()})
 
 	var k int64
 	for l.Len() < 10 {
 		k = rand.Int63()
-		l.Insert(&Item{Value: k})
+		l.Insert(&Item{V: k})
 	}
 	for i := 0; i < 128; {
 		k = rand.Int63()
 		if l.Get(ListKey(k)) == nil {
-			l.Insert(&Item{Value: k})
+			l.Insert(&Item{V: k})
 			i++
 		}
 	}
@@ -93,7 +94,7 @@ func Example() {
 		k = -rand.Int63()
 		if k < -100 {
 			if l.Get(ListKey(k)) == nil {
-				l.Insert(&Item{Value: k})
+				l.Insert(&Item{V: k})
 				i++
 			}
 		}
@@ -103,28 +104,28 @@ func Example() {
 	testSample(128)
 
 	e := l.Get(-7)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	e = l.Get(-19)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	e = l.Get(-53)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	e = l.Get(-31)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	e = l.Get(-2)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	fmt.Println()
 
 	l.Delete(-53)
 	l.Delete(-2)
 
 	e = l.Get(-7)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	e = l.Get(-19)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	e = l.Get(-53)
 	fmt.Println(e)
 	e = l.Get(-31)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	e = l.Get(-2)
 	fmt.Println(e)
 	fmt.Println()
@@ -132,9 +133,9 @@ func Example() {
 	testIterate()
 	testSample(256)
 
-	l.Insert(&Item{Value: -20})
+	l.Insert(&Item{V: -20})
 	e = l.Get(-20)
-	fmt.Println(e.Value)
+	fmt.Println(e.V)
 	fmt.Println()
 
 	testIterate()

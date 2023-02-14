@@ -2,6 +2,7 @@ package uskiplist
 
 import (
 	"math"
+	"unsafe"
 )
 
 const (
@@ -17,94 +18,133 @@ type Comparable[T any] interface {
 	Less(v T) bool
 }
 
-type HasKey[K any] interface {
+type Element[K Comparable[K], E any] interface {
 	GetKey() K
+	header() *ElementHeader
+	*E
 }
 
-type levels[K Comparable[K], PV HasKey[K]] []*element[K, PV]
-
-type element[K Comparable[K], PV HasKey[K]] struct {
-	next  *levels[K, PV]
-	value PV
+type ElementHeader struct {
+	next unsafe.Pointer
 }
 
-type searchPath[K Comparable[K], PV HasKey[K]] struct {
-	pre [MaximumLevel]*element[K, PV]
+func (h *ElementHeader) header() *ElementHeader {
+	return h
 }
 
-type List[K Comparable[K], PV HasKey[K]] struct {
+type levels [MaximumLevel]*element
+
+type element struct {
+	next *levels
+}
+
+type elementL0 struct {
+	next *elementL0
+}
+
+type searchPath struct {
+	pre [MaximumLevel]*element
+}
+
+type List[K Comparable[K], E any, PE Element[K, E]] struct {
 	maxL int
 	len  int
-	root element[K, PV]
+	root E
 }
 
-func NewList[K Comparable[K], PV HasKey[K]]() *List[K, PV] {
-	l := &List[K, PV]{
+func NewList[K Comparable[K], E any, PE Element[K, E]]() *List[K, E, PE] {
+	l := &List[K, E, PE]{
 		maxL: InitialLevel,
 		len:  0,
 	}
-	l.root.next = l.makePointArray(InitialLevel)
+	(PE(&l.root)).header().next = makePointArray(InitialLevel)
 	return l
 }
 
-func (l *List[K, PV]) Len() int { return l.len }
+func (l *List[K, E, PE]) Len() int { return l.len }
 
-func (l *List[K, PV]) Get(k K) (v PV) {
-	pre, f := l.search(k, l.idealLevel(), nil)
-	if f {
-		v = (*pre.next)[0].value
-	}
-	return
+func (l *List[K, E, PE]) Get(k K) *E {
+	e, _, _ := l.search(k, l.idealLevel(), nil)
+	return e
 }
 
-func (l *List[K, PV]) Insert(v PV) {
+func (l *List[K, E, PE]) Insert(newE *E) {
 	lev := l.maxL
-	path := searchPath[K, PV]{}
+	path := searchPath{}
 
-	_, f := l.search(v.GetKey(), lev, &path)
-	if f {
+	e, preL0, _ := l.search((PE(newE)).GetKey(), lev, &path)
+
+	if e != nil {
 		return
 	}
 
 	lev = l.randLevel()
 
-	r := &element[K, PV]{
-		value: v,
-		next:  l.makePointArray(lev),
+	var pNextL0 unsafe.Pointer
+	eHeader := (*element)(unsafe.Pointer(newE))
+
+	if lev != 1 {
+		eHeader.next = (*levels)(makePointArray(lev))
+		for i := lev - 1; i > 0; i-- {
+			eHeader.next[i] = path.pre[i].next[i]
+			path.pre[i].next[i] = (*element)(unsafe.Pointer(newE))
+		}
+		pNextL0 = unsafe.Pointer(&(eHeader.next[0]))
+	} else {
+		pNextL0 = unsafe.Pointer(&(eHeader.next))
 	}
 
-	for i := lev - 1; i >= 0; i-- {
-		(*r.next)[i] = (*path.pre[i].next)[i]
-		(*path.pre[i].next)[i] = r
+	// process level 0
+	if preL0 != nil {
+		*(*unsafe.Pointer)(pNextL0) = unsafe.Pointer(preL0.next)
+		preL0.next = (*elementL0)(unsafe.Pointer(eHeader))
+	} else {
+		*(*unsafe.Pointer)(pNextL0) = unsafe.Pointer(path.pre[0].next[0])
+		path.pre[0].next[0] = eHeader
 	}
 
 	l.len++
 	l.adjust()
 }
 
-func (l *List[K, PV]) Delete(k K) {
+func (l *List[K, E, PE]) Delete(k K) {
 	lev := l.maxL
-	path := searchPath[K, PV]{}
+	path := searchPath{}
 
-	r, f := l.search(k, lev, &path)
-	if !f {
+	e, preL0, _ := l.search(k, lev, &path)
+	if e == nil {
 		return
 	}
 
-	r = (*r.next)[0]
+	eHeader := (*element)(unsafe.Pointer(e))
+	var pNextL0 unsafe.Pointer
 
-	for i := lev - 1; i >= 0; i-- {
-		if (*path.pre[i].next)[i] == r {
-			next := (*r.next)[i]
-			(*r.next)[i] = nil
-			(*path.pre[i].next)[i] = next
+	if path.pre[1].next[1] == eHeader {
+		for i := lev - 1; i > 0; i-- {
+			if path.pre[i].next[i] == eHeader {
+				next := eHeader.next[i]
+				eHeader.next[i] = nil
+				path.pre[i].next[i] = next
+			}
 		}
+		pNextL0 = unsafe.Pointer(&(eHeader.next[0]))
+	} else {
+		pNextL0 = unsafe.Pointer(&(eHeader.next))
 	}
+
+	next := *(*unsafe.Pointer)(pNextL0)
+	*(*unsafe.Pointer)(pNextL0) = nil
+	if preL0 != nil {
+		preL0.next = (*elementL0)(next)
+	} else {
+		path.pre[0].next[0] = (*element)(next)
+	}
+
 	l.len--
 
 }
 
-type Iterator[K Comparable[K], PV HasKey[K]] func(PV) bool
+type Iterator[K Comparable[K], E any, PE Element[K, E]] func(*E) bool
 
 // Iterate will call iterator once for each element greater or equal than pivot
 // in ascending order.
@@ -112,37 +152,74 @@ type Iterator[K Comparable[K], PV HasKey[K]] func(PV) bool
 //	The current element can be deleted in Iterator.
 //	It will stop whenever the iterator returns false.
 //	Iterate will start from the head when pivot is nil.
-func (l *List[K, PV]) Iterate(iterator Iterator[K, PV]) {
-	l.iterate(&l.root, iterator)
+func (l *List[K, E, PE]) Iterate(iterator Iterator[K, E, PE]) {
+	var (
+		curL0 *elementL0
+		cur   = (*element)(unsafe.Pointer(&l.root))
+	)
+	if cur.next[0] != cur.next[1] {
+		curL0 = (*elementL0)(unsafe.Pointer(cur.next[0]))
+	}
+
+	l.iterate(cur, curL0, iterator)
 }
 
-func (l *List[K, PV]) IterateWithPivot(pivot K, iterator Iterator[K, PV]) {
-	pre, _ := l.search(pivot, l.idealLevel(), nil)
-	l.iterate(pre, iterator)
+func (l *List[K, E, PE]) IterateWithPivot(pivot K, iterator Iterator[K, E, PE]) {
+	_, curL0, cur := l.search(pivot, l.idealLevel(), nil)
+	if curL0 == nil {
+		if cur.next[0] != cur.next[1] {
+			curL0 = (*elementL0)(unsafe.Pointer(cur.next[0]))
+		}
+	} else {
+		if unsafe.Pointer(curL0.next) != unsafe.Pointer(cur.next[1]) {
+			curL0 = curL0.next
+		} else {
+			curL0 = nil
+		}
+	}
+	l.iterate(cur, curL0, iterator)
 }
 
-func (l *List[K, PV]) iterate(pre *element[K, PV], iterator Iterator[K, PV]) {
-	cur := (*pre.next)[0]
-	for cur != nil {
-		if !iterator(cur.value) {
+func (l *List[K, E, PE]) iterate(cur *element, curL0 *elementL0, iterator Iterator[K, E, PE]) {
+	next := cur.next[1]
+	for {
+		for curL0 != nil {
+			save := curL0
+			curL0 = curL0.next
+
+			if unsafe.Pointer(curL0) == unsafe.Pointer(next) {
+				curL0 = nil
+			}
+
+			if !iterator((*E)(unsafe.Pointer(save))) {
+				return
+			}
+		}
+
+		if next == nil {
 			return
 		}
-		// cur has been deleted, move cur pointer back
-		if (*pre.next)[0] != cur {
-			cur = pre
-		} else {
-			pre = cur
+
+		cur = next
+		next = cur.next[1]
+
+		if cur.next[0] != next {
+			curL0 = (*elementL0)(unsafe.Pointer(cur.next[0]))
 		}
-		cur = (*cur.next)[0]
+
+		if !iterator((*E)(unsafe.Pointer(cur))) {
+			return
+		}
 	}
+
 }
 
-func (l *List[K, PV]) Sample(step int, iterator Iterator[K, PV]) {
+func (l *List[K, E, PE]) Sample(step int, iterator Iterator[K, E, PE]) {
 	if l.len == 0 {
 		return
 	}
 	if step >= l.len {
-		iterator((*l.root.next)[0].value)
+		iterator(&l.root)
 		return
 	}
 
@@ -156,22 +233,25 @@ func (l *List[K, PV]) Sample(step int, iterator Iterator[K, PV]) {
 
 	i := lev - 1
 
-	if (*l.root.next)[0] != (*l.root.next)[i] {
-		if !iterator((*l.root.next)[0].value) {
+	rootHeader := (*element)(unsafe.Pointer(&l.root))
+
+	if rootHeader.next[0] != rootHeader.next[i] {
+		if !iterator((*E)(unsafe.Pointer(rootHeader.next[0]))) {
 			return
 		}
 	}
 
-	cur := (*l.root.next)[i]
+	cur := rootHeader.next[i]
 	for cur != nil {
-		if !iterator(cur.value) {
+		if !iterator((*E)(unsafe.Pointer(cur))) {
 			return
 		}
-		cur = (*cur.next)[i]
+		cur = cur.next[i]
 	}
 }
 
-func (l *List[K, PV]) search(k K, lev int, path *searchPath[K, PV]) (pre *element[K, PV], found bool) {
+// search return the last node that smaller than target
+func (l *List[K, E, PE]) search(key K, lev int, path *searchPath) (e *E, preL0 *elementL0, pre *element) {
 	if lev < 2 {
 		lev = 2
 	}
@@ -180,24 +260,48 @@ func (l *List[K, PV]) search(k K, lev int, path *searchPath[K, PV]) (pre *elemen
 		lev = l.maxL
 	}
 
-	pre = &l.root
-	for i := lev - 1; i >= 0; i-- {
-		for (*pre.next)[i] != nil && (*pre.next)[i].value.GetKey().Less(k) {
-			pre = (*pre.next)[i]
+	pre = (*element)(unsafe.Pointer((PE(&l.root)).header()))
+
+	for i := lev - 1; i > 0; i-- {
+		for pre.next[i] != nil && l.less(unsafe.Pointer(pre.next[i]), key) {
+			pre = pre.next[i]
 		}
 		if path != nil {
 			path.pre[i] = pre
 		}
 	}
 
-	if (*pre.next)[0] != nil && !k.Less((*pre.next)[0].value.GetKey()) {
-		found = true
+	preL0 = nil
+
+	if pre.next[0] != nil && l.less(unsafe.Pointer(pre.next[0]), key) {
+		preL0 = (*elementL0)(unsafe.Pointer(pre.next[0]))
+		for preL0.next != nil && l.less(unsafe.Pointer(preL0.next), key) {
+			preL0 = preL0.next
+		}
+	}
+
+	if preL0 != nil {
+		if preL0.next != nil && !key.Less((PE((*E)(unsafe.Pointer(preL0.next)))).GetKey()) {
+			e = (*E)(unsafe.Pointer(preL0.next))
+		}
+	} else {
+		if pre.next[0] != nil && !key.Less((PE((*E)(unsafe.Pointer(pre.next[0])))).GetKey()) {
+			e = (*E)(unsafe.Pointer(pre.next[0]))
+		}
+	}
+
+	if path != nil {
+		path.pre[0] = pre
 	}
 
 	return
 }
 
-func (l *List[K, PV]) randLevel() int {
+func (l *List[K, E, PE]) less(elem unsafe.Pointer, key K) bool {
+	return (PE((*E)(elem))).GetKey().Less(key)
+}
+
+func (l *List[K, E, PE]) randLevel() int {
 	const RANDMAX int64 = 65536
 	const RANDTHRESHOLD int64 = int64(float32(RANDMAX) * PROPABILITY)
 	lev := 1
@@ -208,7 +312,7 @@ func (l *List[K, PV]) randLevel() int {
 }
 
 // [InitialLevel, MaximumLevel]
-func (l *List[K, PV]) idealLevel() int {
+func (l *List[K, E, PE]) idealLevel() int {
 	//
 	var lev int
 	switch {
@@ -230,15 +334,16 @@ func (l *List[K, PV]) idealLevel() int {
 	return lev
 }
 
-func (l *List[K, PV]) adjust() {
+func (l *List[K, E, PE]) adjust() {
 	ideal := l.idealLevel()
 	if ideal > l.maxL {
 		lev := l.maxL
-		next := l.root.next
+		root := (*element)(unsafe.Pointer((PE(&l.root)).header()))
+		next := root.next
 		l.maxL = ideal
-		l.root.next = l.makePointArray(l.maxL)
+		root.next = (*levels)(makePointArray(l.maxL))
 		for i := 0; i < lev; i++ {
-			(*l.root.next)[i] = (*next)[i]
+			root.next[i] = next[i]
 		}
 	}
 }
