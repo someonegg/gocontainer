@@ -14,11 +14,11 @@ const (
 	MaximumLevel = 32
 )
 
-type Comparable[T any] interface {
+type Key[T any] interface {
 	Less(v T) bool
 }
 
-type Element[K Comparable[K], E any] interface {
+type Element[K Key[K], E any] interface {
 	GetKey() K
 	header() *ElementHeader
 	*E
@@ -46,13 +46,13 @@ type searchPath struct {
 	pre [MaximumLevel]*element
 }
 
-type List[K Comparable[K], E any, PE Element[K, E]] struct {
+type List[K Key[K], E any, PE Element[K, E]] struct {
 	maxL int
 	len  int
 	root E
 }
 
-func NewList[K Comparable[K], E any, PE Element[K, E]]() *List[K, E, PE] {
+func NewList[K Key[K], E any, PE Element[K, E]]() *List[K, E, PE] {
 	l := &List[K, E, PE]{
 		maxL: InitialLevel,
 		len:  0,
@@ -144,7 +144,7 @@ func (l *List[K, E, PE]) Delete(k K) {
 
 }
 
-type Iterator[K Comparable[K], E any, PE Element[K, E]] func(*E) bool
+type Iterator[K Key[K], E any, PE Element[K, E]] func(*E) bool
 
 // Iterate will call iterator once for each element greater or equal than pivot
 // in ascending order.
