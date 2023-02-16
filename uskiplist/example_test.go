@@ -9,26 +9,35 @@ import (
 	"github.com/someonegg/gocontainer/uskiplist"
 	"math/rand"
 	"time"
-	"unsafe"
 )
 
+type Key int64
+
+func (k Key) Less(k2 Key) bool {
+	return k < k2
+}
+
 type item struct {
-	uskiplist.Header
-	score int64
+	score Key
+	uskiplist.Embedder[item]
+}
+
+func (i *item) Key() Key {
+	return i.score
 }
 
 func Example() {
 	rand.Seed(time.Now().Unix())
-	l := uskiplist.NewByInteger()
+	l := uskiplist.New[Key, item]()
 
 	testIterate := func() {
 		fmt.Println("l", l.Len())
 		fmt.Println()
 
 		n := 0
-		l.Iterate(nil, func(e unsafe.Pointer) bool {
+		l.Iterate(nil, func(e *item) bool {
 			n++
-			v := (*item)(e).score
+			v := e.score
 			if v > -100 && v < 0 {
 				fmt.Println(v)
 			}
@@ -38,9 +47,10 @@ func Example() {
 		fmt.Println()
 
 		n = 0
-		l.IterateByInteger(-20, func(e unsafe.Pointer) bool {
+		pivot := Key(-20)
+		l.Iterate(&pivot, func(e *item) bool {
 			n++
-			v := (*item)(e).score
+			v := e.score
 			if v < 0 {
 				fmt.Println(v)
 			}
@@ -52,7 +62,7 @@ func Example() {
 
 	testSample := func(step int) {
 		n := 0
-		l.Sample(step, func(e unsafe.Pointer) bool {
+		l.Sample(step, func(e *item) bool {
 			n++
 			return true
 		})
@@ -61,31 +71,31 @@ func Example() {
 		}
 	}
 
-	l.Insert(unsafe.Pointer(&item{score: -7}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
-	l.Insert(unsafe.Pointer(&item{score: -19}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
-	l.Insert(unsafe.Pointer(&item{score: -53}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
-	l.Insert(unsafe.Pointer(&item{score: -31}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
-	l.Insert(unsafe.Pointer(&item{score: -2}))
-	l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
+	l.Insert(&item{score: -7})
+	l.Insert(&item{score: Key(rand.Int63())})
+	l.Insert(&item{score: -19})
+	l.Insert(&item{score: Key(rand.Int63())})
+	l.Insert(&item{score: -53})
+	l.Insert(&item{score: Key(rand.Int63())})
+	l.Insert(&item{score: -31})
+	l.Insert(&item{score: Key(rand.Int63())})
+	l.Insert(&item{score: -2})
+	l.Insert(&item{score: Key(rand.Int63())})
 
 	for l.Len() < 10 {
-		l.Insert(unsafe.Pointer(&item{score: rand.Int63()}))
+		l.Insert(&item{score: Key(rand.Int63())})
 	}
 	for i := 0; i < 128; {
-		v := rand.Int63()
-		if l.GetByInteger(v) == nil {
-			l.Insert(unsafe.Pointer(&item{score: v}))
+		v := Key(rand.Int63())
+		if l.Get(v) == nil {
+			l.Insert(&item{score: v})
 			i++
 		}
 	}
 	for i := 0; i < 128; {
-		v := -rand.Int63()
-		if v < -100 && l.GetByInteger(v) == nil {
-			l.Insert(unsafe.Pointer(&item{score: v}))
+		v := Key(-rand.Int63())
+		if v < -100 && l.Get(v) == nil {
+			l.Insert(&item{score: v})
 			i++
 		}
 	}
@@ -93,50 +103,50 @@ func Example() {
 	testIterate()
 	testSample(128)
 
-	e := l.GetByInteger(-7)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-19)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-53)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-31)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-2)
-	fmt.Println((*item)(e).score)
+	e := l.Get(-7)
+	fmt.Println(e.score)
+	e = l.Get(-19)
+	fmt.Println(e.score)
+	e = l.Get(-53)
+	fmt.Println(e.score)
+	e = l.Get(-31)
+	fmt.Println(e.score)
+	e = l.Get(-2)
+	fmt.Println(e.score)
 	fmt.Println()
 
-	l.DeleteByInteger(-53)
-	l.DeleteByInteger(-2)
+	l.Delete(-53)
+	l.Delete(-2)
 
-	e = l.GetByInteger(-7)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-19)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-53)
+	e = l.Get(-7)
+	fmt.Println(e.score)
+	e = l.Get(-19)
+	fmt.Println(e.score)
+	e = l.Get(-53)
 	fmt.Println(e)
-	e = l.GetByInteger(-31)
-	fmt.Println((*item)(e).score)
-	e = l.GetByInteger(-2)
+	e = l.Get(-31)
+	fmt.Println(e.score)
+	e = l.Get(-2)
 	fmt.Println(e)
 	fmt.Println()
 
 	testIterate()
 	testSample(256)
 
-	l.Insert(unsafe.Pointer(&item{score: -20}))
-	e = l.GetByInteger(-20)
-	fmt.Println((*item)(e).score)
+	l.Insert(&item{score: -20})
+	e = l.Get(-20)
+	fmt.Println(e.score)
 	fmt.Println()
 
 	testIterate()
 	testSample(32)
 
 	d := 0
-	l.Iterate(nil, func(e unsafe.Pointer) bool {
-		v := (*item)(e).score
+	l.Iterate(nil, func(e *item) bool {
+		v := e.score
 		if v < -100 {
 			d++
-			l.Delete(e)
+			l.Delete(v)
 		}
 		return true
 	})
