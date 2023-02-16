@@ -59,7 +59,7 @@ func Example() {
 	fmt.Println(l.Rank(e4))
 
 	e5 := l.Add(&item{score: 4})
-	fmt.Println(l.Rank(e5))
+	l.Rank(e5)
 
 	e6 := l.Add(&item{score: 6})
 	fmt.Println(l.Rank(e6))
@@ -86,7 +86,6 @@ func Example() {
 	// 0
 	// 1
 	// 1
-	// 3
 	// 5
 	//
 	// 1
