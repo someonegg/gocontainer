@@ -17,8 +17,6 @@ package skiplist
 
 import (
 	"fmt"
-	"math/rand"
-	"sync"
 	"time"
 )
 
@@ -29,26 +27,6 @@ const (
 	DefaultLevel = 16
 	MaximumLevel = 32
 )
-
-type lockedSource struct {
-	lk  sync.Mutex
-	src rand.Source
-}
-
-func (r *lockedSource) Int63() (n int64) {
-	r.lk.Lock()
-	n = r.src.Int63()
-	r.lk.Unlock()
-	return
-}
-
-func (r *lockedSource) Seed(seed int64) {
-	r.lk.Lock()
-	r.src.Seed(seed)
-	r.lk.Unlock()
-}
-
-var gRandSource rand.Source = &lockedSource{src: rand.NewSource(time.Now().Unix())}
 
 // Scorable object can be passed to CompareFunc.
 type Scorable interface{}
@@ -103,8 +81,9 @@ func (e *Element) prev() *Element {
 type List struct {
 	maxL int
 	comp CompareFunc
-	root *Element
 	len  int
+	root *Element
+	rnd  splitMix64
 }
 
 // NewList creates a new skip list, with DefaultLevel\compare.
@@ -128,6 +107,7 @@ func NewListEx(maxLevel int, compare CompareFunc) *List {
 			lev:  make([]level, maxLevel),
 			list: nil,
 		},
+		rnd: splitMix64(time.Now().Unix()),
 	}
 
 	for i := 0; i < l.maxL; i++ {
@@ -274,7 +254,7 @@ func (l *List) randLevel() int {
 	const RANDMAX int64 = 65536
 	const RANDTHRESHOLD int64 = int64(float32(RANDMAX) * PROPABILITY)
 	nlev := 1
-	for gRandSource.Int63()%RANDMAX < RANDTHRESHOLD && nlev < l.maxL {
+	for l.rnd.Int63()%RANDMAX < RANDTHRESHOLD && nlev < l.maxL {
 		nlev++
 	}
 	return nlev

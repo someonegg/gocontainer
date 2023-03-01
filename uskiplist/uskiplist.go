@@ -8,6 +8,7 @@ package uskiplist
 
 import (
 	"math"
+	"time"
 	"unsafe"
 )
 
@@ -57,6 +58,7 @@ type List[K Key[K], E any, PE Element[K, E]] struct {
 	maxL int
 	len  int
 	root *leveln[E]
+	rnd  splitMix64
 }
 
 // New creates a new skiplist.
@@ -65,6 +67,7 @@ func New[K Key[K], E any, PE Element[K, E]]() *List[K, E, PE] {
 		maxL: InitialLevel,
 		len:  0,
 		root: (*leveln[E])(makePointArray(InitialLevel)),
+		rnd:  splitMix64(time.Now().Unix()),
 	}
 }
 
@@ -321,7 +324,7 @@ func (l *List[K, E, PE]) randLevel() int {
 	const RANDMAX int64 = 65536
 	const RANDTHRESHOLD int64 = int64(float32(RANDMAX) * PROPABILITY)
 	lev := 1
-	for gRandSource.Int63()%RANDMAX < RANDTHRESHOLD && lev < l.maxL {
+	for l.rnd.Int63()%RANDMAX < RANDTHRESHOLD && lev < l.maxL {
 		lev++
 	}
 	return lev
