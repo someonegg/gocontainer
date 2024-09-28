@@ -10,12 +10,7 @@ package uskiplist
 import "unsafe"
 
 func makePointArray(n int) unsafe.Pointer {
-	type slice struct {
-		array unsafe.Pointer
-		len   int
-		cap   int
-	}
-	s := make([]unsafe.Pointer, n, MaximumLevel)
-	ps := (*slice)(unsafe.Pointer(&s))
-	return ps.array
+	slice := make([]unsafe.Pointer, n, MaximumLevel)
+	array := unsafe.SliceData(slice)
+	return unsafe.Pointer(array)
 }

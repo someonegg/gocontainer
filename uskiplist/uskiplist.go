@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package uskiplist implements a skiplist using unsafe
+// Package uskiplist implements a skiplist using unusual
 // operations to minimize memory and references.
 package uskiplist
 
