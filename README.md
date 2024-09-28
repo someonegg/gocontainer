@@ -16,5 +16,3 @@ Installation
 Install gocontainer using the "go get" command:
 
     go get github.com/someonegg/gocontainer
-
-The Go distribution is gocontainer's only dependency.
