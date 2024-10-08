@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package uskiplist implements generic skiplists using
+// Package uskiplist implements a generic skiplist using
 // unusual operations to minimize memory and references.
 package uskiplist
 
@@ -10,42 +10,11 @@ import (
 	"math"
 	"time"
 	"unsafe"
+
+	"github.com/someonegg/gocontainer/cmp"
 )
 
-const (
-	// PROPABILITY is the fixed probability.
-	PROPABILITY float32 = 0.25
-
-	// Level limit will increase dynamically.
-	InitialLevel = 4
-	MaximumLevel = 32
-)
-
-type level1[E any] [1]*E
-type leveln[E any] [MaximumLevel]*E
-
-// Embedder should be embedded in the skiplist element struct.
-type Embedder[E any] struct {
-	next unsafe.Pointer
-}
-
-func (e *Embedder[E]) ptNext() *unsafe.Pointer {
-	return &e.next
-}
-
-func (e *Embedder[E]) l1Next() *level1[E] {
-	return (*level1[E])(unsafe.Pointer(&e.next))
-}
-
-func (e *Embedder[E]) lnNext() *leveln[E] {
-	return (*leveln[E])(e.next)
-}
-
-type Key[K any] interface {
-	Less(k K) bool
-}
-
-type Element[K Key[K], E any] interface {
+type ElementO[K cmp.Ordered, E any] interface {
 	Key() K
 	*E
 
@@ -54,16 +23,16 @@ type Element[K Key[K], E any] interface {
 	lnNext() *leveln[E]
 }
 
-type List[K Key[K], E any, PE Element[K, E]] struct {
+type ListO[K cmp.Ordered, E any, PE ElementO[K, E]] struct {
 	maxL int
 	len  int
 	root *leveln[E]
 	rnd  splitMix64
 }
 
-// New creates a new skiplist.
-func New[K Key[K], E any, PE Element[K, E]]() *List[K, E, PE] {
-	return &List[K, E, PE]{
+// NewO creates a new skiplist, limiting the key to Ordered type.
+func NewO[K cmp.Ordered, E any, PE ElementO[K, E]]() *ListO[K, E, PE] {
+	return &ListO[K, E, PE]{
 		maxL: InitialLevel,
 		len:  0,
 		root: (*leveln[E])(makePointArray(InitialLevel)),
@@ -72,15 +41,15 @@ func New[K Key[K], E any, PE Element[K, E]]() *List[K, E, PE] {
 }
 
 // Len returns number of elements in the skiplist.
-func (l *List[K, E, PE]) Len() int { return l.len }
+func (l *ListO[K, E, PE]) Len() int { return l.len }
 
 // Get searches for the specified element, returns nil when not found.
-func (l *List[K, E, PE]) Get(k K) *E {
+func (l *ListO[K, E, PE]) Get(k K) *E {
 	return l.search(k, l.idealLevel(), nil)
 }
 
 // Insert inserts a new element, do nothing when found.
-func (l *List[K, E, PE]) Insert(e *E) {
+func (l *ListO[K, E, PE]) Insert(e *E) {
 	path := &searchPath[E]{}
 	lev := l.maxL
 
@@ -112,7 +81,7 @@ func (l *List[K, E, PE]) Insert(e *E) {
 }
 
 // Delete remove the element from the skiplist, do nothing when not found.
-func (l *List[K, E, PE]) Delete(k K) {
+func (l *ListO[K, E, PE]) Delete(k K) {
 	path := &searchPath[E]{}
 	lev := l.maxL
 
@@ -141,15 +110,13 @@ func (l *List[K, E, PE]) Delete(k K) {
 	l.len--
 }
 
-type Iterator[E any] func(*E) bool
-
 // Iterate will call iterator once for each element greater or equal than pivot
 // in ascending order.
 //
 //	The current element can be deleted in Iterator.
 //	It will stop whenever the iterator returns false.
 //	Iterate will start from the head when pivot is nil.
-func (l *List[K, E, PE]) Iterate(pivot *K, iterator Iterator[E]) {
+func (l *ListO[K, E, PE]) Iterate(pivot *K, iterator Iterator[E]) {
 	var cur, relay *E
 
 	if pivot == nil {
@@ -200,7 +167,7 @@ func (l *List[K, E, PE]) Iterate(pivot *K, iterator Iterator[E]) {
 }
 
 // Sample samples about one for every step elements.
-func (l *List[K, E, PE]) Sample(step int, iterator Iterator[E]) {
+func (l *ListO[K, E, PE]) Sample(step int, iterator Iterator[E]) {
 	if l.len == 0 {
 		return
 	}
@@ -236,10 +203,8 @@ func (l *List[K, E, PE]) Sample(step int, iterator Iterator[E]) {
 	}
 }
 
-type searchPath[E any] [MaximumLevel]**E
-
 // lev : [2, l.maxL]
-func (l *List[K, E, PE]) search(k K, lev int, path *searchPath[E]) (e *E) {
+func (l *ListO[K, E, PE]) search(k K, lev int, path *searchPath[E]) (e *E) {
 	if lev < 2 {
 		lev = 2
 	}
@@ -249,7 +214,7 @@ func (l *List[K, E, PE]) search(k K, lev int, path *searchPath[E]) (e *E) {
 
 	pre := l.root
 	for i := lev - 1; i > 0; i-- {
-		for pre[i] != nil && PE(pre[i]).Key().Less(k) {
+		for pre[i] != nil && PE(pre[i]).Key() < k {
 			pre = PE(pre[i]).lnNext()
 		}
 		if path != nil {
@@ -258,22 +223,22 @@ func (l *List[K, E, PE]) search(k K, lev int, path *searchPath[E]) (e *E) {
 	}
 
 	var preL0 *level1[E]
-	if pre[0] != nil && PE(pre[0]).Key().Less(k) {
+	if pre[0] != nil && PE(pre[0]).Key() < k {
 		preL0 = PE(pre[0]).l1Next()
-		for preL0[0] != nil && PE(preL0[0]).Key().Less(k) {
+		for preL0[0] != nil && PE(preL0[0]).Key() < k {
 			preL0 = PE(preL0[0]).l1Next()
 		}
 	}
 
 	if preL0 != nil {
-		if preL0[0] != nil && !k.Less(PE(preL0[0]).Key()) {
+		if preL0[0] != nil && !(k < PE(preL0[0]).Key()) {
 			e = preL0[0]
 		}
 		if path != nil {
 			path[0] = &preL0[0]
 		}
 	} else {
-		if pre[0] != nil && !k.Less(PE(pre[0]).Key()) {
+		if pre[0] != nil && !(k < PE(pre[0]).Key()) {
 			e = pre[0]
 		}
 		if path != nil {
@@ -285,7 +250,7 @@ func (l *List[K, E, PE]) search(k K, lev int, path *searchPath[E]) (e *E) {
 }
 
 // [InitialLevel, MaximumLevel]
-func (l *List[K, E, PE]) idealLevel() int {
+func (l *ListO[K, E, PE]) idealLevel() int {
 	// hardcode
 	var lev int
 	switch {
@@ -307,7 +272,7 @@ func (l *List[K, E, PE]) idealLevel() int {
 	return lev
 }
 
-func (l *List[K, E, PE]) adjust() {
+func (l *ListO[K, E, PE]) adjust() {
 	ideal := l.idealLevel()
 	if ideal > l.maxL {
 		lev := l.maxL
@@ -320,7 +285,7 @@ func (l *List[K, E, PE]) adjust() {
 	}
 }
 
-func (l *List[K, E, PE]) randLevel() int {
+func (l *ListO[K, E, PE]) randLevel() int {
 	const RANDMAX int64 = 65536
 	const RANDTHRESHOLD int64 = int64(float32(RANDMAX) * PROPABILITY)
 	lev := 1
