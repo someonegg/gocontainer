@@ -10,6 +10,8 @@ import (
 	"math"
 	"time"
 	"unsafe"
+
+	"github.com/someonegg/gocontainer/cmp"
 )
 
 const (
@@ -41,11 +43,7 @@ func (e *Embedder[E]) lnNext() *leveln[E] {
 	return (*leveln[E])(e.next)
 }
 
-type Key[K any] interface {
-	Less(k K) bool
-}
-
-type Element[K Key[K], E any] interface {
+type Element[K cmp.Key[K], E any] interface {
 	Key() K
 	*E
 
@@ -54,7 +52,7 @@ type Element[K Key[K], E any] interface {
 	lnNext() *leveln[E]
 }
 
-type List[K Key[K], E any, PE Element[K, E]] struct {
+type List[K cmp.Key[K], E any, PE Element[K, E]] struct {
 	maxL int
 	len  int
 	root *leveln[E]
@@ -62,7 +60,7 @@ type List[K Key[K], E any, PE Element[K, E]] struct {
 }
 
 // New creates a new skiplist.
-func New[K Key[K], E any, PE Element[K, E]]() *List[K, E, PE] {
+func New[K cmp.Key[K], E any, PE Element[K, E]]() *List[K, E, PE] {
 	return &List[K, E, PE]{
 		maxL: InitialLevel,
 		len:  0,

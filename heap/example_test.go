@@ -6,12 +6,17 @@ package heap_test
 
 import (
 	"fmt"
-	"github.com/someonegg/gocontainer/cmp"
 	"github.com/someonegg/gocontainer/heap"
 )
 
+type element int
+
+func (e element) Less(e2 element) bool {
+	return e < e2
+}
+
 func ExampleHeap() {
-	h := heap.New[int](6, cmp.Less[int])
+	h := heap.New[element](6)
 
 	fmt.Println(h.Len())
 
@@ -58,7 +63,7 @@ func ExampleHeap() {
 }
 
 func ExampleFixedHeap() {
-	h := heap.NewFixed[int](5, cmp.Less[int])
+	h := heap.NewFixed[element](5)
 
 	fmt.Println(h.Len())
 

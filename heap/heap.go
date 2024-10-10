@@ -6,15 +6,15 @@
 // that each node is the minimum-valued node in its subtree.
 package heap
 
-type Heap[T any] struct {
+import "github.com/someonegg/gocontainer/cmp"
+
+type Heap[T cmp.Key[T]] struct {
 	data []T
-	less func(a, b T) bool
 }
 
-func New[T any](cap int, less func(a, b T) bool) *Heap[T] {
+func New[T cmp.Key[T]](cap int) *Heap[T] {
 	return &Heap[T]{
 		data: make([]T, 0, cap),
-		less: less,
 	}
 }
 
@@ -31,7 +31,7 @@ func (h *Heap[T]) Swap(i, j int) {
 }
 
 func (h *Heap[T]) Less(i, j int) bool {
-	return h.less(h.data[i], h.data[j])
+	return h.data[i].Less(h.data[j])
 }
 
 func (h *Heap[T]) Push(x T) {
@@ -80,15 +80,15 @@ func (h *Heap[T]) down(i0, n int) bool {
 	return i > i0
 }
 
-type FixedHeap[T any] struct {
+type FixedHeap[T cmp.Key[T]] struct {
 	size int
 	*Heap[T]
 }
 
-func NewFixed[T any](size int, less func(a, b T) bool) *FixedHeap[T] {
+func NewFixed[T cmp.Key[T]](size int) *FixedHeap[T] {
 	return &FixedHeap[T]{
 		size: size,
-		Heap: New[T](size+1, less),
+		Heap: New[T](size + 1),
 	}
 }
 

@@ -75,3 +75,7 @@ func Or[T comparable](vals ...T) T {
 	}
 	return zero
 }
+
+type Key[K any] interface {
+	Less(k K) bool
+}
