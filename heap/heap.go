@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package heap implements a generic heap. Heap is a tree with the property
+// Package heap implements generic heaps. Heap is a tree with the property
 // that each node is the minimum-valued node in its subtree.
 package heap
 
@@ -78,4 +78,24 @@ func (h *Heap[T]) down(i0, n int) bool {
 		i = j
 	}
 	return i > i0
+}
+
+type FixedHeap[T any] struct {
+	size int
+	*Heap[T]
+}
+
+func NewFixed[T any](size int, less func(a, b T) bool) *FixedHeap[T] {
+	return &FixedHeap[T]{
+		size: size,
+		Heap: New[T](size+1, less),
+	}
+}
+
+func (h *FixedHeap[T]) Push(x T) (x2 T, pop bool) {
+	h.Heap.Push(x)
+	if h.Len() > h.size {
+		return h.Pop(), true
+	}
+	return
 }
