@@ -30,14 +30,19 @@ type ListO[K cmp.Ordered, E any, PE ElementO[K, E]] struct {
 	rnd  splitMix64
 }
 
-// NewO creates a new skiplist, limiting the key to Ordered type.
+// NewO creates and initializes a new skiplist, limiting the key to Ordered type.
 func NewO[K cmp.Ordered, E any, PE ElementO[K, E]]() *ListO[K, E, PE] {
-	return &ListO[K, E, PE]{
-		maxL: InitialLevel,
-		len:  0,
-		root: (*leveln[E])(makePointArray(InitialLevel)),
-		rnd:  splitMix64(time.Now().Unix()),
-	}
+	l := &ListO[K, E, PE]{}
+	l.Init()
+	return l
+}
+
+// Init initializes the skiplist.
+func (l *ListO[K, E, PE]) Init() {
+	l.maxL = InitialLevel
+	l.len = 0
+	l.root = (*leveln[E])(makePointArray(InitialLevel))
+	l.rnd = splitMix64(time.Now().Unix())
 }
 
 // Len returns number of elements in the skiplist.

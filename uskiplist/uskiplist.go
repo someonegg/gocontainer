@@ -59,14 +59,19 @@ type List[K cmp.Key[K], E any, PE Element[K, E]] struct {
 	rnd  splitMix64
 }
 
-// New creates a new skiplist.
+// New creates and initializes a new skiplist.
 func New[K cmp.Key[K], E any, PE Element[K, E]]() *List[K, E, PE] {
-	return &List[K, E, PE]{
-		maxL: InitialLevel,
-		len:  0,
-		root: (*leveln[E])(makePointArray(InitialLevel)),
-		rnd:  splitMix64(time.Now().Unix()),
-	}
+	l := &List[K, E, PE]{}
+	l.Init()
+	return l
+}
+
+// Init initializes the skiplist.
+func (l *List[K, E, PE]) Init() {
+	l.maxL = InitialLevel
+	l.len = 0
+	l.root = (*leveln[E])(makePointArray(InitialLevel))
+	l.rnd = splitMix64(time.Now().Unix())
 }
 
 // Len returns number of elements in the skiplist.
