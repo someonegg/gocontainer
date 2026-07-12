@@ -8,34 +8,26 @@ import (
 	"fmt"
 	"github.com/someonegg/gocontainer/uskiplist"
 	"math/rand"
-	"time"
 )
 
-type keyU int64
-
-func (k keyU) Less(k2 keyU) bool {
-	return k < k2
+type itemO struct {
+	score int64
+	uskiplist.Embedder[itemO]
 }
 
-type itemU struct {
-	score keyU
-	uskiplist.Embedder[itemU]
-}
-
-func (i *itemU) Key() keyU {
+func (i *itemO) Key() int64 {
 	return i.score
 }
 
-func ExampleList() {
-	rand.Seed(time.Now().Unix())
-	l := uskiplist.New[keyU, itemU]()
+func ExampleListO() {
+	l := uskiplist.NewO[int64, itemO]()
 
 	testIterate := func() {
 		fmt.Println("l", l.Len())
 		fmt.Println()
 
 		n := 0
-		l.Iterate(nil, func(e *itemU) bool {
+		l.Iterate(nil, func(e *itemO) bool {
 			n++
 			v := e.score
 			if v > -100 && v < 0 {
@@ -47,8 +39,8 @@ func ExampleList() {
 		fmt.Println()
 
 		n = 0
-		pivot := keyU(-20)
-		l.Iterate(&pivot, func(e *itemU) bool {
+		pivot := int64(-20)
+		l.Iterate(&pivot, func(e *itemO) bool {
 			n++
 			v := e.score
 			if v < 0 {
@@ -62,7 +54,7 @@ func ExampleList() {
 
 	testSample := func(step int) {
 		n := 0
-		l.Sample(step, func(e *itemU) bool {
+		l.Sample(step, func(e *itemO) bool {
 			n++
 			return true
 		})
@@ -71,31 +63,31 @@ func ExampleList() {
 		}
 	}
 
-	l.Insert(&itemU{score: -7})
-	l.Insert(&itemU{score: keyU(rand.Int63())})
-	l.Insert(&itemU{score: -19})
-	l.Insert(&itemU{score: keyU(rand.Int63())})
-	l.Insert(&itemU{score: -53})
-	l.Insert(&itemU{score: keyU(rand.Int63())})
-	l.Insert(&itemU{score: -31})
-	l.Insert(&itemU{score: keyU(rand.Int63())})
-	l.Insert(&itemU{score: -2})
-	l.Insert(&itemU{score: keyU(rand.Int63())})
+	l.Insert(&itemO{score: -7})
+	l.Insert(&itemO{score: rand.Int63()})
+	l.Insert(&itemO{score: -19})
+	l.Insert(&itemO{score: rand.Int63()})
+	l.Insert(&itemO{score: -53})
+	l.Insert(&itemO{score: rand.Int63()})
+	l.Insert(&itemO{score: -31})
+	l.Insert(&itemO{score: rand.Int63()})
+	l.Insert(&itemO{score: -2})
+	l.Insert(&itemO{score: rand.Int63()})
 
 	for l.Len() < 10 {
-		l.Insert(&itemU{score: keyU(rand.Int63())})
+		l.Insert(&itemO{score: rand.Int63()})
 	}
 	for i := 0; i < 128; {
-		v := keyU(rand.Int63())
+		v := rand.Int63()
 		if l.Get(v) == nil {
-			l.Insert(&itemU{score: v})
+			l.Insert(&itemO{score: v})
 			i++
 		}
 	}
 	for i := 0; i < 128; {
-		v := keyU(-rand.Int63())
+		v := int64(-rand.Int63())
 		if v < -100 && l.Get(v) == nil {
-			l.Insert(&itemU{score: v})
+			l.Insert(&itemO{score: v})
 			i++
 		}
 	}
@@ -133,7 +125,7 @@ func ExampleList() {
 	testIterate()
 	testSample(256)
 
-	l.Insert(&itemU{score: -20})
+	l.Insert(&itemO{score: -20})
 	e = l.Get(-20)
 	fmt.Println(e.score)
 	fmt.Println()
@@ -142,7 +134,7 @@ func ExampleList() {
 	testSample(32)
 
 	d := 0
-	l.Iterate(nil, func(e *itemU) bool {
+	l.Iterate(nil, func(e *itemO) bool {
 		v := e.score
 		if v < -100 {
 			d++

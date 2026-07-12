@@ -7,8 +7,6 @@ package uskiplist_test
 import (
 	"fmt"
 	"github.com/someonegg/gocontainer/uskiplist"
-	"math/rand"
-	"time"
 )
 
 type item struct {
@@ -23,7 +21,6 @@ func (i *item) Key() string {
 }
 
 func Example() {
-	rand.Seed(time.Now().Unix())
 	l := uskiplist.NewO[string, item]()
 
 	l.Insert(&item{k: "a", v: 1})
