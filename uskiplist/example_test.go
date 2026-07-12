@@ -46,13 +46,12 @@ func Example() {
 	e = l.Get("d")
 	fmt.Println(e.v)
 
-	l.Iterate(nil, func(e *item) bool {
+	l.Iterate(func(e *item) bool {
 		fmt.Println(e.v)
 		return true
 	})
 
-	pivot := "c"
-	l.Iterate(&pivot, func(e *item) bool {
+	l.IterateFrom("c", func(e *item) bool {
 		fmt.Println(e.v)
 		return true
 	})

@@ -1,9 +1,21 @@
 # gocontainer
 gocontainer contains several optimized container implementations.
 
-* Package databox defines the DataBox type, which can be used to store data to reduce the number of references and memory fragmentation.
-* Package skiplist implements a skip list.
-* Package uskiplist implements generic skiplists using unusual operations to minimize memory and references.
+* Package databox stores byte data with fewer references and less memory fragmentation.
+* Package heap implements generic heaps.
+* Package skiplist implements a ranked skip list that supports repeated elements.
+* Package uskiplist implements intrusive generic skiplists with low allocation and reference overhead.
+* Package sortedmap implements generic sorted maps based on uskiplist.
+
+Notes
+-----
+
+uskiplist uses a fixed probability of 0.25, so the expected skiplist level is
+about 1.33 forward pointers per element. In this intrusive implementation, that
+is stored as one embedded pointer plus occasional extra pointer arrays, averaging
+about 1.58 pointer words per element.
+
+![uskiplist layout](uskiplist/doc.PNG)
 
 Documentation
 -------------

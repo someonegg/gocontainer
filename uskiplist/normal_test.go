@@ -33,7 +33,7 @@ func ExampleList() {
 		fmt.Println()
 
 		n := 0
-		l.Iterate(nil, func(e *itemU) bool {
+		l.Iterate(func(e *itemU) bool {
 			n++
 			v := e.score
 			if v > -100 && v < 0 {
@@ -45,8 +45,7 @@ func ExampleList() {
 		fmt.Println()
 
 		n = 0
-		pivot := keyU(-20)
-		l.Iterate(&pivot, func(e *itemU) bool {
+		l.IterateFrom(keyU(-20), func(e *itemU) bool {
 			n++
 			v := e.score
 			if v < 0 {
@@ -140,7 +139,7 @@ func ExampleList() {
 	testSample(32)
 
 	d := 0
-	l.Iterate(nil, func(e *itemU) bool {
+	l.Iterate(func(e *itemU) bool {
 		v := e.score
 		if v < -100 {
 			d++

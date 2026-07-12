@@ -106,29 +106,39 @@ func (l *List[K, E, PE]) Delete(k K) {
 	l.len--
 }
 
-// Iterate will call iterator once for each element greater or equal than pivot
-// in ascending order.
+// Iterate will call iterator once for each element in ascending order.
 //
 //	The current element can be deleted in Iterator.
 //	It will stop whenever the iterator returns false.
-//	Iterate will start from the head when pivot is nil.
-func (l *List[K, E, PE]) Iterate(pivot *K, iterator Iterator[E]) {
+func (l *List[K, E, PE]) Iterate(iterator Iterator[E]) {
 	var cur, relay *E
 
-	if pivot == nil {
-		if l.root[0] != l.root[1] {
-			cur = l.root[0]
-		}
-		relay = l.root[1]
-	} else {
-		path := &searchPath[E]{}
-		l.search(*pivot, l.idealLevel(), path)
-		if *path[0] != *path[1] {
-			cur = *path[0]
-		}
-		relay = *path[1]
+	if l.root[0] != l.root[1] {
+		cur = l.root[0]
+	}
+	relay = l.root[1]
+
+	l.iterate(cur, relay, iterator)
+}
+
+// IterateFrom will call iterator once for each element greater or equal than
+// pivot in ascending order.
+//
+//	The current element can be deleted in Iterator.
+//	It will stop whenever the iterator returns false.
+func (l *List[K, E, PE]) IterateFrom(pivot K, iterator Iterator[E]) {
+	var cur *E
+
+	path := &searchPath[E]{}
+	l.search(pivot, l.idealLevel(), path)
+	if *path[0] != *path[1] {
+		cur = *path[0]
 	}
 
+	l.iterate(cur, *path[1], iterator)
+}
+
+func (l *List[K, E, PE]) iterate(cur, relay *E, iterator Iterator[E]) {
 	for {
 		for cur != nil {
 			save := cur

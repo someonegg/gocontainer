@@ -55,6 +55,9 @@ type level struct {
 
 // Next returns the next list element or nil.
 func (e *Element) Next() *Element {
+	if e == nil || e.list == nil {
+		return nil
+	}
 	if p := e.next(); e.list != nil && p != e.list.root {
 		return p
 	}
@@ -63,6 +66,9 @@ func (e *Element) Next() *Element {
 
 // Prev returns the previous list element or nil.
 func (e *Element) Prev() *Element {
+	if e == nil || e.list == nil {
+		return nil
+	}
 	if p := e.prev(); e.list != nil && p != e.list.root {
 		return p
 	}
@@ -175,7 +181,7 @@ func (l *List) Find(score Scorable) *Element {
 
 // Rank will calculate current rank of the element, return -1 if not in the list.
 func (l *List) Rank(e *Element) int {
-	if e.list != l {
+	if e == nil || e.list != l {
 		return -1
 	}
 
@@ -262,7 +268,7 @@ func (l *List) randLevel() int {
 
 // Remove an element from the list.
 func (l *List) Remove(e *Element) {
-	if e.list != l {
+	if e == nil || e.list != l {
 		return
 	}
 	l.remove(e)

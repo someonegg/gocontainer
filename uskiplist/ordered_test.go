@@ -27,7 +27,7 @@ func ExampleListO() {
 		fmt.Println()
 
 		n := 0
-		l.Iterate(nil, func(e *itemO) bool {
+		l.Iterate(func(e *itemO) bool {
 			n++
 			v := e.score
 			if v > -100 && v < 0 {
@@ -39,8 +39,7 @@ func ExampleListO() {
 		fmt.Println()
 
 		n = 0
-		pivot := int64(-20)
-		l.Iterate(&pivot, func(e *itemO) bool {
+		l.IterateFrom(int64(-20), func(e *itemO) bool {
 			n++
 			v := e.score
 			if v < 0 {
@@ -134,7 +133,7 @@ func ExampleListO() {
 	testSample(32)
 
 	d := 0
-	l.Iterate(nil, func(e *itemO) bool {
+	l.Iterate(func(e *itemO) bool {
 		v := e.score
 		if v < -100 {
 			d++
